@@ -122,7 +122,9 @@ jobs:
       
       - name: Run tests
         working-directory: ./vscode-extension
-        run: npm test
+        # VS Code extension tests launch a headless VS Code instance, which
+        # needs an X display; xvfb-run provides a virtual one on the runner.
+        run: xvfb-run -a npm test
         env:
           CI: true
 

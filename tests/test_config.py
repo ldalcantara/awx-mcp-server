@@ -4,8 +4,8 @@ import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from awx_mcp.storage import ConfigManager
-from awx_mcp.domain import (
+from awx_mcp_server.storage import ConfigManager
+from awx_mcp_server.domain import (
     EnvironmentConfig,
     EnvironmentNotFoundError,
     EnvironmentAlreadyExistsError,

@@ -1,7 +1,7 @@
 """Tests for failure analysis."""
 
-from awx_mcp.domain import JobEvent, FailureCategory
-from awx_mcp.utils import analyze_job_failure
+from awx_mcp_server.domain import JobEvent, FailureCategory
+from awx_mcp_server.utils import analyze_job_failure
 
 
 def test_analyze_auth_failure():

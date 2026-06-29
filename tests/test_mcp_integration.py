@@ -11,9 +11,9 @@ This test suite covers all MCP server functionality:
 
 import asyncio
 import pytest
-from awx_mcp.storage import ConfigManager, CredentialStore
-from awx_mcp.clients import CompositeAWXClient
-from awx_mcp.domain import CredentialType
+from awx_mcp_server.storage import ConfigManager, CredentialStore
+from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.domain import CredentialType
 
 
 @pytest.fixture
@@ -335,21 +335,21 @@ class TestErrorHandling:
     
     async def test_get_nonexistent_template(self, awx_client):
         """Test error when getting nonexistent template."""
-        from awx_mcp.domain import AWXClientError
+        from awx_mcp_server.domain import AWXClientError
         
         with pytest.raises(AWXClientError):
             await awx_client.get_job_template(999999)
     
     async def test_get_nonexistent_job(self, awx_client):
         """Test error when getting nonexistent job."""
-        from awx_mcp.domain import AWXClientError
+        from awx_mcp_server.domain import AWXClientError
         
         with pytest.raises(AWXClientError):
             await awx_client.get_job(999999)
     
     async def test_launch_nonexistent_template(self, awx_client):
         """Test error when launching nonexistent template."""
-        from awx_mcp.domain import AWXClientError
+        from awx_mcp_server.domain import AWXClientError
         
         with pytest.raises(AWXClientError):
             await awx_client.launch_job(999999)

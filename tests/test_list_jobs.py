@@ -1,9 +1,9 @@
 """Test AWX MCP functionality - list jobs."""
 import asyncio
 from datetime import datetime, timedelta
-from awx_mcp.storage import ConfigManager, CredentialStore
-from awx_mcp.clients import CompositeAWXClient
-from awx_mcp.domain import CredentialType
+from awx_mcp_server.storage import ConfigManager, CredentialStore
+from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.domain import CredentialType
 
 async def test_list_jobs():
     """Test listing AWX jobs."""

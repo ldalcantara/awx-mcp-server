@@ -1,9 +1,9 @@
 """Test AWX MCP functionality - cancel job."""
 import asyncio
 import sys
-from awx_mcp.storage import ConfigManager, CredentialStore
-from awx_mcp.clients import CompositeAWXClient
-from awx_mcp.domain import CredentialType
+from awx_mcp_server.storage import ConfigManager, CredentialStore
+from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.domain import CredentialType
 
 async def test_job_cancel():
     """Test canceling a running job."""

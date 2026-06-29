@@ -1,7 +1,7 @@
 """Test AWX MCP functionality - environment management."""
 import asyncio
-from awx_mcp.storage import ConfigManager, CredentialStore
-from awx_mcp.domain import CredentialType, NoActiveEnvironmentError
+from awx_mcp_server.storage import ConfigManager, CredentialStore
+from awx_mcp_server.domain import CredentialType, NoActiveEnvironmentError
 
 async def test_env_management():
     """Test environment management operations."""
@@ -21,7 +21,7 @@ async def test_env_management():
     if not environments:
         print("⚠ No environments configured.")
         print("\nTo add an environment, run:")
-        print("  python -m awx_mcp.cli env add --name local --url http://localhost:30080 --token TOKEN")
+        print("  python -m awx_mcp_server.cli env add --name local --url http://localhost:30080 --token TOKEN")
         return
     
     print(f"Found {len(environments)} environment(s):\n")
@@ -47,7 +47,7 @@ async def test_env_management():
     except NoActiveEnvironmentError:
         print("✗ No active environment set!")
         print("\nSet an active environment with:")
-        print(f"  python -m awx_mcp.cli env set-default {environments[0].name}")
+        print(f"  python -m awx_mcp_server.cli env set-default {environments[0].name}")
         return
     
     # Test 3: Check credentials
@@ -70,14 +70,14 @@ async def test_env_management():
         except Exception as e:
             print(f"✗ No credentials found: {e}")
             print("\nRe-add environment with credentials:")
-            print(f"  python -m awx_mcp.cli env add --name {active_env.name} --url {active_env.base_url} --token TOKEN")
+            print(f"  python -m awx_mcp_server.cli env add --name {active_env.name} --url {active_env.base_url} --token TOKEN")
             return
     
     # Test 4: Test connection
     print("\n[Test 4] Test Connection to AWX")
     print("-" * 70)
     
-    from awx_mcp.clients import CompositeAWXClient
+    from awx_mcp_server.clients import CompositeAWXClient
     
     # Determine credential type
     try:
@@ -116,12 +116,12 @@ async def test_env_management():
         print(f"\nTo switch environments:")
         for env in environments:
             if not env.is_default:
-                print(f"  python -m awx_mcp.cli env set-default {env.name}")
+                print(f"  python -m awx_mcp_server.cli env set-default {env.name}")
                 break
     else:
         print(f"Only one environment configured: {active_env.name}")
         print(f"\nTo add another environment:")
-        print(f"  python -m awx_mcp.cli env add --name staging --url https://awx-staging.local --token TOKEN")
+        print(f"  python -m awx_mcp_server.cli env add --name staging --url https://awx-staging.local --token TOKEN")
     
     # Test 6: Allowlist check (if configured)
     print("\n[Test 6] Template Allowlist")

@@ -4,7 +4,7 @@ import pytest
 from datetime import datetime
 from pydantic import ValidationError
 
-from awx_mcp.domain import (
+from awx_mcp_server.domain import (
     EnvironmentConfig,
     JobStatus,
     FailureCategory,

@@ -77,26 +77,6 @@ class RestAWXClient(AWXClient):
         """Async context manager exit."""
         await self.client.aclose()
 
-    def _parse_extra_vars(self, extra_vars: Any) -> dict[str, Any]:
-        """
-        Parse extra_vars field from AWX API.
-
-        Args:
-            extra_vars: Extra vars value (can be dict, string, or empty)
-
-        Returns:
-            Parsed dictionary
-        """
-        if isinstance(extra_vars, dict):
-            return extra_vars
-        if isinstance(extra_vars, str):
-            if extra_vars.strip():
-                try:
-                    return json.loads(extra_vars)
-                except json.JSONDecodeError:
-                    return {}
-        return {}
-
     async def _request(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> dict[str, Any]:

@@ -1,5 +1,6 @@
 """Base AWX client interface."""
 
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -17,6 +18,19 @@ from awx_mcp_server.domain import (
 
 class AWXClient(ABC):
     """Abstract base class for AWX clients."""
+
+    @staticmethod
+    def _parse_extra_vars(extra_vars: Any) -> dict[str, Any]:
+        """Normalize AWX's ``extra_vars`` (a dict, a JSON string, or empty) to a
+        dict. Shared so the REST and awxkit clients agree on the shape."""
+        if isinstance(extra_vars, dict):
+            return extra_vars
+        if isinstance(extra_vars, str) and extra_vars.strip():
+            try:
+                return json.loads(extra_vars)
+            except json.JSONDecodeError:
+                return {}
+        return {}
 
     @abstractmethod
     async def test_connection(self) -> bool:

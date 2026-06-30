@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 from typing import Any, Optional
 
 from awx_mcp_server.clients.base import AWXClient
@@ -61,8 +62,11 @@ class AwxkitClient(AWXClient):
         Raises:
             AWXClientError: If command fails
         """
-        # Build environment with credentials
+        # Build environment with credentials. Start from the current env so the
+        # subprocess keeps PATH/HOME/proxy settings (a bare dict wiped PATH, so
+        # the `awx` binary often couldn't be found).
         env = {
+            **os.environ,
             "TOWER_HOST": self.base_url,
             "TOWER_VERIFY_SSL": "true" if self.config.verify_ssl else "false",
         }
@@ -142,7 +146,7 @@ class AwxkitClient(AWXClient):
                 inventory=item.get("inventory"),
                 project=item["project"],
                 playbook=item["playbook"],
-                extra_vars=item.get("extra_vars", {}),
+                extra_vars=self._parse_extra_vars(item.get("extra_vars")),
             )
             for item in results
         ]
@@ -159,7 +163,7 @@ class AwxkitClient(AWXClient):
             inventory=data.get("inventory"),
             project=data["project"],
             playbook=data["playbook"],
-            extra_vars=data.get("extra_vars", {}),
+            extra_vars=self._parse_extra_vars(data.get("extra_vars")),
         )
 
     async def list_projects(
@@ -371,7 +375,7 @@ class AwxkitClient(AWXClient):
             inventory=data.get("inventory"),
             project=data.get("project"),
             playbook=data.get("playbook", ""),
-            extra_vars=data.get("extra_vars", {}),
+            extra_vars=self._parse_extra_vars(data.get("extra_vars")),
             started=started,
             finished=finished,
             elapsed=data.get("elapsed"),

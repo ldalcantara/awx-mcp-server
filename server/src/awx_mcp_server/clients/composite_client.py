@@ -16,6 +16,9 @@ from awx_mcp_server.domain import (
     WorkflowJobNode,
     WorkflowJobTemplate,
 )
+from awx_mcp_server.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class CompositeAWXClient(AWXClient):
@@ -58,8 +61,8 @@ class CompositeAWXClient(AWXClient):
         if self.prefer_cli:
             try:
                 return await self.cli_client.test_connection()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.test_connection()
 
     async def list_job_templates(
@@ -71,8 +74,8 @@ class CompositeAWXClient(AWXClient):
                 return await self.cli_client.list_job_templates(
                     name_filter, page, page_size
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.list_job_templates(name_filter, page, page_size)
 
     async def get_job_template(self, template_id: int) -> JobTemplate:
@@ -80,8 +83,8 @@ class CompositeAWXClient(AWXClient):
         if self.prefer_cli:
             try:
                 return await self.cli_client.get_job_template(template_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.get_job_template(template_id)
 
     async def list_projects(
@@ -91,8 +94,8 @@ class CompositeAWXClient(AWXClient):
         if self.prefer_cli:
             try:
                 return await self.cli_client.list_projects(name_filter, page, page_size)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.list_projects(name_filter, page, page_size)
 
     async def get_project(self, project_id: int) -> Project:
@@ -100,8 +103,8 @@ class CompositeAWXClient(AWXClient):
         if self.prefer_cli:
             try:
                 return await self.cli_client.get_project(project_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.get_project(project_id)
 
     async def update_project(
@@ -111,8 +114,8 @@ class CompositeAWXClient(AWXClient):
         if self.prefer_cli:
             try:
                 return await self.cli_client.update_project(project_id, wait)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.update_project(project_id, wait)
 
     async def list_inventories(
@@ -124,8 +127,8 @@ class CompositeAWXClient(AWXClient):
                 return await self.cli_client.list_inventories(
                     name_filter, page, page_size
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.list_inventories(name_filter, page, page_size)
 
     async def launch_job(
@@ -142,8 +145,8 @@ class CompositeAWXClient(AWXClient):
                 return await self.cli_client.launch_job(
                     template_id, extra_vars, limit, tags, skip_tags
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.launch_job(
             template_id, extra_vars, limit, tags, skip_tags
         )
@@ -153,8 +156,8 @@ class CompositeAWXClient(AWXClient):
         if self.prefer_cli:
             try:
                 return await self.cli_client.get_job(job_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.get_job(job_id)
 
     async def list_jobs(
@@ -171,8 +174,8 @@ class CompositeAWXClient(AWXClient):
                 return await self.cli_client.list_jobs(
                     status, created_after, page, page_size
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.list_jobs(
             status, created_after, job_template_id, page, page_size
         )
@@ -182,8 +185,8 @@ class CompositeAWXClient(AWXClient):
         if self.prefer_cli:
             try:
                 return await self.cli_client.cancel_job(job_id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("awxkit CLI path failed, falling back to REST: %s", e)
         return await self.rest_client.cancel_job(job_id)
 
     async def get_job_stdout(

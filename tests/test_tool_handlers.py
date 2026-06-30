@@ -192,6 +192,16 @@ async def test_job_template_notification_associate(invoke):
     )
 
 
+async def test_job_delete_uses_rest_client(invoke):
+    """Regression: awx_job_delete must call client.rest_client.delete_job
+    (CompositeAWXClient has no delete_job — was a runtime AttributeError)."""
+    rest = {"delete_job": AsyncMock(return_value=None)}
+    client = FakeClient(rest=rest)
+    text = await invoke("awx_job_delete", {"job_id": 99}, client)
+    assert "deleted successfully" in text
+    client.rest_client.delete_job.assert_awaited_once_with(99)
+
+
 # --- Error / validation paths --------------------------------------------
 
 

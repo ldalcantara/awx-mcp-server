@@ -41,6 +41,33 @@ def _response(status_code, content=b"{}"):
     return r
 
 
+async def test_list_follows_pagination():
+    """List methods must follow AWX's `next` link, not truncate to page 1."""
+    client = _client()
+
+    def page(results, nxt):
+        return _response(200, json.dumps({"results": results, "next": nxt}).encode())
+
+    def tmpl(i):
+        return {"id": i, "name": f"t{i}", "project": 1, "playbook": "p.yml"}
+
+    pages = [
+        page([tmpl(1), tmpl(2)], "/api/v2/job_templates/?page=2"),
+        page([tmpl(3)], None),
+    ]
+    calls = {"n": 0}
+
+    async def serve(method, endpoint, **kwargs):
+        i = calls["n"]
+        calls["n"] += 1
+        return pages[i]
+
+    client.client.request = serve
+    out = await client.list_job_templates()
+    assert [t.id for t in out] == [1, 2, 3]  # both pages, not just the first
+    assert calls["n"] == 2
+
+
 async def test_failed_delete_raises():
     """A DELETE returning 4xx must raise, not silently succeed."""
     client = _client()

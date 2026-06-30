@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/your-org/awx-mcp-server"
 LABEL org.opencontainers.image.description="AWX MCP Remote Server"

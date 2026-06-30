@@ -101,6 +101,7 @@ class MonitoringService:
         duration: float,
         tool_name: Optional[str] = None,
         error: Optional[str] = None,
+        error_type: Optional[str] = None,
     ):
         """Record a request metric."""
         # Update Prometheus metrics
@@ -118,9 +119,7 @@ class MonitoringService:
         if error:
             ERROR_COUNT.labels(
                 tenant_id=tenant_id,
-                error_type=(
-                    type(error).__name__ if isinstance(error, Exception) else "unknown"
-                ),
+                error_type=error_type or "unknown",
             ).inc()
 
         # Update internal stats
@@ -305,6 +304,7 @@ class RequestTimer:
         self.start_time = None
         self.status_code = 200
         self.error = None
+        self.error_type = None
 
     def __enter__(self):
         """Start timing."""
@@ -319,6 +319,7 @@ class RequestTimer:
         if exc_type is not None:
             self.status_code = 500
             self.error = str(exc_val)
+            self.error_type = exc_type.__name__
 
         monitoring_service.record_request(
             tenant_id=self.tenant_id,
@@ -328,6 +329,7 @@ class RequestTimer:
             duration=duration,
             tool_name=self.tool_name,
             error=self.error,
+            error_type=self.error_type,
         )
 
         monitoring_service.update_active_connections(self.tenant_id, -1)

@@ -6,7 +6,12 @@ from datetime import datetime
 from typing import Any, Optional
 
 import httpx
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 from awx_mcp_server.clients.base import AWXClient
 from awx_mcp_server.domain import (
@@ -92,12 +97,33 @@ class RestAWXClient(AWXClient):
                     return {}
         return {}
 
+    async def _request(
+        self, method: str, endpoint: str, **kwargs: Any
+    ) -> dict[str, Any]:
+        """Dispatch an HTTP request.
+
+        Idempotent reads (GET) are retried on transient connection errors.
+        Mutating methods (POST/PUT/PATCH/DELETE) are NOT retried, so a
+        launch/create that times out after the server already acted is not
+        replayed into a duplicate.
+        """
+        if method.upper() == "GET":
+            return await self._request_with_retry(method, endpoint, **kwargs)
+        return await self._do_request(method, endpoint, **kwargs)
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(AWXConnectionError),
         reraise=True,
     )
-    async def _request(
+    async def _request_with_retry(
+        self, method: str, endpoint: str, **kwargs: Any
+    ) -> dict[str, Any]:
+        """Retry wrapper for idempotent requests (transient connection errors only)."""
+        return await self._do_request(method, endpoint, **kwargs)
+
+    async def _do_request(
         self, method: str, endpoint: str, **kwargs: Any
     ) -> dict[str, Any]:
         """
@@ -150,6 +176,9 @@ class RestAWXClient(AWXClient):
                     f"API error {response.status_code}: {error_detail}"
                 )
 
+            # 204 No Content (e.g. DELETE) and empty bodies have no JSON.
+            if response.status_code == 204 or not response.content:
+                return {}
             return response.json()
         except httpx.ConnectError as e:
             logger.error(f"Connection error to {endpoint}: {e}")
@@ -259,7 +288,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_credential(self, cred_id: int) -> None:
         """Delete credential."""
-        await self.client.request("DELETE", f"/api/v2/credentials/{cred_id}/")
+        await self._request("DELETE", f"/api/v2/credentials/{cred_id}/")
 
     # Notification Templates
 
@@ -367,9 +396,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_notification_template(self, template_id: int) -> None:
         """Delete notification template."""
-        await self.client.request(
-            "DELETE", f"/api/v2/notification_templates/{template_id}/"
-        )
+        await self._request("DELETE", f"/api/v2/notification_templates/{template_id}/")
 
     async def test_notification_template(self, template_id: int) -> dict[str, Any]:
         """Send a test notification from a notification template."""
@@ -517,7 +544,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_job_template(self, template_id: int) -> None:
         """Delete job template."""
-        await self.client.request("DELETE", f"/api/v2/job_templates/{template_id}/")
+        await self._request("DELETE", f"/api/v2/job_templates/{template_id}/")
 
     async def add_credential_to_template(
         self, template_id: int, credential_id: int
@@ -604,7 +631,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_project(self, project_id: int) -> None:
         """Delete project."""
-        await self.client.request("DELETE", f"/api/v2/projects/{project_id}/")
+        await self._request("DELETE", f"/api/v2/projects/{project_id}/")
 
     async def update_project(
         self, project_id: int, wait: bool = True
@@ -688,7 +715,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_inventory(self, inventory_id: int) -> None:
         """Delete inventory."""
-        await self.client.request("DELETE", f"/api/v2/inventories/{inventory_id}/")
+        await self._request("DELETE", f"/api/v2/inventories/{inventory_id}/")
 
     async def list_inventory_groups(
         self, inventory_id: int, page: int = 1, page_size: int = 25
@@ -718,7 +745,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_inventory_group(self, group_id: int) -> None:
         """Delete inventory group."""
-        await self.client.request("DELETE", f"/api/v2/groups/{group_id}/")
+        await self._request("DELETE", f"/api/v2/groups/{group_id}/")
 
     async def list_inventory_hosts(
         self, inventory_id: int, page: int = 1, page_size: int = 25
@@ -748,7 +775,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_inventory_host(self, host_id: int) -> None:
         """Delete inventory host."""
-        await self.client.request("DELETE", f"/api/v2/hosts/{host_id}/")
+        await self._request("DELETE", f"/api/v2/hosts/{host_id}/")
 
     async def launch_job(
         self,
@@ -808,7 +835,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_job(self, job_id: int) -> None:
         """Delete job."""
-        await self.client.request("DELETE", f"/api/v2/jobs/{job_id}/")
+        await self._request("DELETE", f"/api/v2/jobs/{job_id}/")
 
     async def get_job_stdout(
         self, job_id: int, format: str = "txt", tail_lines: Optional[int] = None
@@ -1146,7 +1173,7 @@ class RestAWXClient(AWXClient):
 
     async def delete_workflow_job(self, job_id: int) -> None:
         """Delete workflow job."""
-        await self.client.request("DELETE", f"/api/v2/workflow_jobs/{job_id}/")
+        await self._request("DELETE", f"/api/v2/workflow_jobs/{job_id}/")
 
     async def relaunch_workflow_job(self, job_id: int) -> WorkflowJob:
         """Relaunch a workflow job."""

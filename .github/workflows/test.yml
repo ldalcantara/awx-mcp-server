@@ -54,7 +54,7 @@ jobs:
       - name: Run server tests
         working-directory: ./tests
         run: |
-          pytest test_server.py test_mcp_integration.py -v --cov
+          pytest test_server.py test_mcp_integration.py test_rest_client.py -v --cov
       
       - name: Upload coverage
         uses: codecov/codecov-action@v3

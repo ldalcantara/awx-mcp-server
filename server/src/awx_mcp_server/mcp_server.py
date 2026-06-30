@@ -15,6 +15,11 @@ from mcp.types import (
 from awx_mcp_server.clients import CompositeAWXClient
 from awx_mcp_server.domain import (
     AllowlistViolationError,
+    AWXAuthenticationError,
+    AWXClientError,
+    AWXConnectionError,
+    AWXMCPError,
+    AWXPermissionError,
     CredentialType,
     EnvironmentConfig,
     NoActiveEnvironmentError,
@@ -3327,9 +3332,45 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             else:
                 return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
-        except Exception as e:
+        except KeyError as e:
+            # A required argument was missing from the tool call.
+            logger.error("tool_error", tool=name, error=f"missing argument {e}")
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Error: missing required argument {e} for tool '{name}'.",
+                )
+            ]
+        except (AWXAuthenticationError, AWXPermissionError) as e:
             logger.error("tool_error", tool=name, error=str(e))
-            return [TextContent(type="text", text=f"Error: {str(e)}")]
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Authorization error from AWX: {e}. "
+                    "Check the active environment's credentials and permissions.",
+                )
+            ]
+        except AWXConnectionError as e:
+            logger.error("tool_error", tool=name, error=str(e))
+            return [
+                TextContent(
+                    type="text",
+                    text=f"Could not reach AWX: {e}. "
+                    "Check the environment URL and network connectivity.",
+                )
+            ]
+        except AllowlistViolationError as e:
+            logger.error("tool_error", tool=name, error=str(e))
+            return [TextContent(type="text", text=f"Blocked by allowlist policy: {e}.")]
+        except (AWXClientError, AWXMCPError) as e:
+            logger.error("tool_error", tool=name, error=str(e))
+            return [TextContent(type="text", text=f"AWX error: {e}")]
+        except Exception as e:
+            # Unexpected/unclassified error: log the full traceback for triage.
+            logger.exception("tool_error_unexpected", tool=name)
+            return [
+                TextContent(type="text", text=f"Unexpected error in tool '{name}': {e}")
+            ]
 
     return mcp_server
 

@@ -1,19 +1,24 @@
 """Test AWX connection and fetch resources"""
 
+import os
+
 import httpx
 import urllib3
 
 # Disable SSL warnings for local testing
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# Configuration
-AWX_BASE_URL = "http://localhost:30080"
-AWX_TOKEN = "kMs3gDlZk3XI1tcpoiSbPvtYf14GfS"
+# Configuration (from env; never hardcode credentials)
+AWX_BASE_URL = os.environ.get("AWX_BASE_URL", "http://localhost:30080")
+AWX_TOKEN = os.environ.get("AWX_TOKEN", "")
 
 headers = {"Authorization": f"Bearer {AWX_TOKEN}", "Content-Type": "application/json"}
 
 
 def test_connection():
+    if not AWX_TOKEN:
+        print("⚠ AWX_TOKEN env var not set — skipping connection test")
+        return
     print("\n" + "=" * 60)
     print("   AWX MCP SERVER - CONNECTION TEST")
     print("=" * 60)

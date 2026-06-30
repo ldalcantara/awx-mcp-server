@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.table import Table
 from rich.json import JSON
 
+from awx_mcp_server import __version__
 from awx_mcp_server.http_server import start_http_server
 from awx_mcp_server.storage import ConfigManager, CredentialStore
 from awx_mcp_server.clients import CompositeAWXClient
@@ -17,7 +18,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version="1.1.6")
+@click.version_option(version=__version__)
 def main():
     """AWX MCP Remote Server - CLI and API for AWX/AAP automation."""
     pass

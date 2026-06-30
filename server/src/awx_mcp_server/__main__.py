@@ -5,9 +5,8 @@ This allows the server to be run with: python -m awx_mcp_server
 
 import asyncio
 import sys
+from awx_mcp_server import __version__
 from awx_mcp_server.mcp_server import main
-
-__version__ = "1.1.6"
 
 if __name__ == "__main__":
     # Handle --version flag

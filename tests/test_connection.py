@@ -1,13 +1,18 @@
 """Test AWX connection with detailed error output."""
 
 import asyncio
+import os
+
 import httpx
 
 
 async def test_rest_connection():
     """Test REST API connection."""
     print("Testing REST API connection...")
-    token = "kMs3gDlZk3XI1tcpoiSbPvtYf14GfS"
+    token = os.environ.get("AWX_TOKEN", "")
+    if not token:
+        print("⚠ AWX_TOKEN env var not set — skipping connection test")
+        return
 
     async with httpx.AsyncClient(verify=False) as client:
         try:

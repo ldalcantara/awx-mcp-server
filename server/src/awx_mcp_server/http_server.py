@@ -5,7 +5,7 @@ import json
 import os
 import secrets
 from datetime import datetime, timedelta
-from typing import Any, Optional, AsyncIterator
+from typing import Any, Optional, AsyncIterator, cast
 from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
@@ -207,13 +207,14 @@ async def process_mcp_message(
 
         elif method == "tools/list":
             # List available tools - call the server's handler using class type as key
-            from mcp.types import ListToolsRequest
+            from mcp.types import ListToolsRequest, ListToolsResult
 
             request = ListToolsRequest(method="tools/list", params=params)
             handler = mcp_server.request_handlers[ListToolsRequest]
             server_result = await handler(request)
-            # ServerResult is a Pydantic RootModel - access the wrapped result via .root
-            tools_result = server_result.root
+            # ServerResult is a Pydantic RootModel; for a ListToolsRequest the
+            # wrapped result is always a ListToolsResult.
+            tools_result = cast(ListToolsResult, server_result.root)
             result = {"tools": [tool.model_dump() for tool in tools_result.tools]}
 
         elif method == "tools/call":
@@ -226,7 +227,7 @@ async def process_mcp_message(
             )
 
             # Create proper MCP request using class type as key
-            from mcp.types import CallToolRequest
+            from mcp.types import CallToolRequest, CallToolResult
 
             request = CallToolRequest(
                 method="tools/call", params={"name": tool_name, "arguments": tool_args}
@@ -235,8 +236,9 @@ async def process_mcp_message(
             # Execute the tool through MCP server
             handler = mcp_server.request_handlers[CallToolRequest]
             server_result = await handler(request)
-            # ServerResult is a Pydantic RootModel - access the wrapped result via .root
-            tool_result = server_result.root
+            # ServerResult is a Pydantic RootModel; for a CallToolRequest the
+            # wrapped result is always a CallToolResult.
+            tool_result = cast(CallToolResult, server_result.root)
 
             # Convert result to JSON-serializable format
             result = {

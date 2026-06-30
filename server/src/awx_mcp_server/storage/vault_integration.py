@@ -46,7 +46,7 @@ class AWXCredentials:
     awx_username: Optional[str] = None
     awx_password: Optional[str] = None
     environment: str = "production"
-    metadata: Dict[str, Any] = None
+    metadata: Optional[Dict[str, Any]] = None
 
 
 class BaseVaultProvider(ABC):
@@ -308,7 +308,8 @@ def create_vault_provider(
         raise ValueError(f"Unsupported vault provider: {provider_type}")
 
     provider_class = VAULT_PROVIDERS[provider_type]
-    return provider_class(config)
+    # Registry holds concrete subclasses; the static type is the abstract base.
+    return provider_class(config)  # type: ignore[abstract]
 
 
 # Example usage (future):

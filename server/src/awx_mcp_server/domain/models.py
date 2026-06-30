@@ -47,19 +47,21 @@ class EnvironmentConfig(BaseModel):
     env_id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., min_length=1, max_length=100)
     base_url: HttpUrl
-    platform_type: PlatformType = PlatformType.AWX  # Default to AWX for backward compatibility
+    platform_type: PlatformType = (
+        PlatformType.AWX
+    )  # Default to AWX for backward compatibility
     verify_ssl: bool = True
     is_default: bool = False
-    
+
     # Optional defaults
     default_organization: Optional[str] = None
     default_project: Optional[str] = None
     default_inventory: Optional[str] = None
-    
+
     # Allowlists
     allowed_job_templates: list[str] = Field(default_factory=list)
     allowed_inventories: list[str] = Field(default_factory=list)
-    
+
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -74,7 +76,7 @@ class EnvironmentConfig(BaseModel):
 
     class Config:
         """Pydantic config."""
-        
+
         json_encoders = {
             datetime: lambda v: v.isoformat(),
             UUID: lambda v: str(v),

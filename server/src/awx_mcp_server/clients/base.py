@@ -53,7 +53,9 @@ class AWXClient(ABC):
         pass
 
     @abstractmethod
-    async def update_project(self, project_id: int, wait: bool = True) -> dict[str, Any]:
+    async def update_project(
+        self, project_id: int, wait: bool = True
+    ) -> dict[str, Any]:
         """Update project from SCM."""
         pass
 
@@ -106,7 +108,11 @@ class AWXClient(ABC):
 
     @abstractmethod
     async def get_job_events(
-        self, job_id: int, failed_only: bool = False, page: int = 1, page_size: int = 100
+        self,
+        job_id: int,
+        failed_only: bool = False,
+        page: int = 1,
+        page_size: int = 100,
     ) -> list[JobEvent]:
         """Get job events."""
         pass

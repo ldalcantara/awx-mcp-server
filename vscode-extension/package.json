@@ -388,7 +388,7 @@
     "prebuild": "npm run compile",
     "build": "npm run compile && npm run copy-bundled",
     "copy-bundled": "echo Bundled package already in place",
-    "package": "npm run build && vsce package --out dist/",
+    "package": "npm run build && mkdir -p dist && vsce package --out dist/",
     "publish": "vsce publish",
     "install-extension": "code --install-extension dist/awx-mcp-extension-1.0.0.vsix"
   },

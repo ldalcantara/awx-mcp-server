@@ -68,7 +68,9 @@ class CompositeAWXClient(AWXClient):
         """List job templates - prefer CLI."""
         if self.prefer_cli:
             try:
-                return await self.cli_client.list_job_templates(name_filter, page, page_size)
+                return await self.cli_client.list_job_templates(
+                    name_filter, page, page_size
+                )
             except Exception:
                 pass
         return await self.rest_client.list_job_templates(name_filter, page, page_size)
@@ -102,7 +104,9 @@ class CompositeAWXClient(AWXClient):
                 pass
         return await self.rest_client.get_project(project_id)
 
-    async def update_project(self, project_id: int, wait: bool = True) -> dict[str, Any]:
+    async def update_project(
+        self, project_id: int, wait: bool = True
+    ) -> dict[str, Any]:
         """Update project - prefer CLI."""
         if self.prefer_cli:
             try:
@@ -117,7 +121,9 @@ class CompositeAWXClient(AWXClient):
         """List inventories - prefer CLI."""
         if self.prefer_cli:
             try:
-                return await self.cli_client.list_inventories(name_filter, page, page_size)
+                return await self.cli_client.list_inventories(
+                    name_filter, page, page_size
+                )
             except Exception:
                 pass
         return await self.rest_client.list_inventories(name_filter, page, page_size)
@@ -138,7 +144,9 @@ class CompositeAWXClient(AWXClient):
                 )
             except Exception:
                 pass
-        return await self.rest_client.launch_job(template_id, extra_vars, limit, tags, skip_tags)
+        return await self.rest_client.launch_job(
+            template_id, extra_vars, limit, tags, skip_tags
+        )
 
     async def get_job(self, job_id: int) -> Job:
         """Get job - prefer CLI."""
@@ -160,10 +168,14 @@ class CompositeAWXClient(AWXClient):
         """List jobs - prefer CLI."""
         if self.prefer_cli:
             try:
-                return await self.cli_client.list_jobs(status, created_after, page, page_size)
+                return await self.cli_client.list_jobs(
+                    status, created_after, page, page_size
+                )
             except Exception:
                 pass
-        return await self.rest_client.list_jobs(status, created_after, job_template_id, page, page_size)
+        return await self.rest_client.list_jobs(
+            status, created_after, job_template_id, page, page_size
+        )
 
     async def cancel_job(self, job_id: int) -> dict[str, Any]:
         """Cancel job - prefer CLI."""
@@ -181,10 +193,16 @@ class CompositeAWXClient(AWXClient):
         return await self.rest_client.get_job_stdout(job_id, format, tail_lines)
 
     async def get_job_events(
-        self, job_id: int, failed_only: bool = False, page: int = 1, page_size: int = 100
+        self,
+        job_id: int,
+        failed_only: bool = False,
+        page: int = 1,
+        page_size: int = 100,
     ) -> list[JobEvent]:
         """Get job events - always use REST (CLI not well supported)."""
-        return await self.rest_client.get_job_events(job_id, failed_only, page, page_size)
+        return await self.rest_client.get_job_events(
+            job_id, failed_only, page, page_size
+        )
 
     # Workflow Job Templates
 
@@ -192,7 +210,9 @@ class CompositeAWXClient(AWXClient):
         self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
     ) -> list[WorkflowJobTemplate]:
         """List workflow job templates."""
-        return await self.rest_client.list_workflow_job_templates(name_filter, page, page_size)
+        return await self.rest_client.list_workflow_job_templates(
+            name_filter, page, page_size
+        )
 
     async def get_workflow_job_template(self, template_id: int) -> WorkflowJobTemplate:
         """Get workflow job template by ID."""
@@ -207,7 +227,9 @@ class CompositeAWXClient(AWXClient):
         skip_tags: Optional[list[str]] = None,
     ) -> WorkflowJob:
         """Launch workflow job from template."""
-        return await self.rest_client.launch_workflow_job(template_id, extra_vars, limit, tags, skip_tags)
+        return await self.rest_client.launch_workflow_job(
+            template_id, extra_vars, limit, tags, skip_tags
+        )
 
     async def get_workflow_job(self, job_id: int) -> WorkflowJob:
         """Get workflow job by ID."""
@@ -221,7 +243,9 @@ class CompositeAWXClient(AWXClient):
         workflow_template_id: Optional[int] = None,
     ) -> list[WorkflowJob]:
         """List workflow jobs."""
-        return await self.rest_client.list_workflow_jobs(status, page, page_size, workflow_template_id)
+        return await self.rest_client.list_workflow_jobs(
+            status, page, page_size, workflow_template_id
+        )
 
     async def cancel_workflow_job(self, job_id: int) -> dict[str, Any]:
         """Cancel running workflow job."""

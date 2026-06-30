@@ -151,7 +151,7 @@ The MCP server supports **two authentication modes**:
 ```bash
 # Admin runs this on the server (requires admin token)
 curl -X POST http://your-server:8000/api/keys \
-  -H "Authorization: Bearer admin-secret-token" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "john-doe-vscode",
@@ -942,7 +942,7 @@ Here's the **complete step-by-step flow** to get both keys and configure VS Code
 ```bash
 # Admin creates your API key
 curl -X POST https://awx-mcp-server.surgexlabs.com/api/keys \
-  -H "Authorization: Bearer admin-secret-token" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "john-doe-vscode",

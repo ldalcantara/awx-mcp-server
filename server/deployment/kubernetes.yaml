@@ -21,7 +21,7 @@ metadata:
   namespace: awx-mcp
 type: Opaque
 stringData:
-  admin-token: "change-me-in-production"
+  admin-token: ""  # REQUIRED: set to a strong secret before deploying (base64 in a real Secret)
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -2,9 +2,11 @@
 
 import asyncio
 import json
+import os
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Optional, AsyncIterator
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, HTTPException, Request, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,12 +22,62 @@ from awx_mcp_server.monitoring import (
 
 # Import local components
 from awx_mcp_server.storage import ConfigManager, CredentialStore
+from awx_mcp_server.request_context import (
+    set_awx_override,
+    reset_awx_override,
+)
 from awx_mcp_server.utils import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
 # API Key storage (in production, use database or Redis)
 API_KEYS: dict[str, dict[str, Any]] = {}
+
+
+def _truthy(val: Optional[str]) -> bool:
+    return (val or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _anonymous_allowed() -> bool:
+    """Keyless MCP access is opt-in only (default deny), so the tool-executing
+    /mcp endpoint is not exposed to the network without authentication."""
+    return _truthy(os.environ.get("MCP_ALLOW_ANONYMOUS"))
+
+
+def _require_admin(authorization: Optional[str]) -> None:
+    """Gate admin endpoints on the ADMIN_TOKEN env var. Fail closed when it is
+    not configured, and compare in constant time."""
+    admin_token = os.environ.get("ADMIN_TOKEN")
+    if not admin_token:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin API is disabled: ADMIN_TOKEN is not configured.",
+        )
+    expected = f"Bearer {admin_token}"
+    if not authorization or not secrets.compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+
+def _validate_awx_base_url(url: Optional[str]) -> None:
+    """SSRF guard: only honor a client-supplied AWX base URL if its host is
+    explicitly allowlisted via AWX_ALLOWED_HOSTS (comma-separated). Fail closed
+    so an attacker can't point the server at internal/metadata endpoints."""
+    if not url:
+        return
+    allowed = [
+        h.strip()
+        for h in os.environ.get("AWX_ALLOWED_HOSTS", "").split(",")
+        if h.strip()
+    ]
+    host = urlparse(url).hostname or ""
+    if not allowed or host not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Client-supplied AWX base URL is not permitted. Set "
+                "AWX_ALLOWED_HOSTS to allow specific hosts."
+            ),
+        )
 
 
 class APIKeyCreate(BaseModel):
@@ -46,10 +98,14 @@ class APIKeyResponse(BaseModel):
     expires_at: Optional[str]
 
 
-def verify_api_key(x_api_key: str = Header(...)) -> dict[str, Any]:
-    """Verify API key and return tenant info."""
-    if x_api_key not in API_KEYS:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+def verify_api_key(x_api_key: Optional[str] = Header(None)) -> dict[str, Any]:
+    """Verify API key and return tenant info.
+
+    A missing or unknown key both yield 401 (not 422), so authenticated
+    endpoints reject unauthenticated callers consistently.
+    """
+    if not x_api_key or x_api_key not in API_KEYS:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
     key_info = API_KEYS[x_api_key]
 
@@ -81,8 +137,16 @@ def verify_api_key_optional(x_api_key: Optional[str] = Header(None)) -> dict[str
             # API key provided but invalid
             raise HTTPException(status_code=401, detail="Invalid API key")
 
-    # No API key provided - use anonymous/default tenant
-    # For production, you may want to require API keys
+    # No API key provided. Anonymous access is opt-in only (default deny) so
+    # the /mcp endpoint, which can execute tools, is not open to the network.
+    if not _anonymous_allowed():
+        raise HTTPException(
+            status_code=401,
+            detail=(
+                "API key required. Set MCP_ALLOW_ANONYMOUS=true to permit "
+                "keyless access."
+            ),
+        )
     return {
         "tenant_id": "default",
         "name": "Anonymous User",
@@ -249,30 +313,50 @@ async def process_mcp_message(
 
 def create_app(mcp_server: Server) -> FastAPI:
     """Create FastAPI application with MCP server and monitoring."""
+    # API docs expose the full surface; keep them off unless explicitly enabled.
+    _docs_enabled = _truthy(os.environ.get("MCP_ENABLE_DOCS"))
     app = FastAPI(
         title="AWX MCP Server",
         description="Production-ready MCP server for AWX automation with monitoring",
         version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url="/docs" if _docs_enabled else None,
+        redoc_url="/redoc" if _docs_enabled else None,
     )
 
-    # CORS middleware
+    # CORS: explicit allowlist from CORS_ORIGINS (comma-separated). Never pair a
+    # wildcard with credentials. Empty -> no cross-origin access (same-origin).
+    _cors_origins = [
+        o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()
+    ]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately in production
-        allow_credentials=True,
-        allow_methods=["*"],
+        allow_origins=_cors_origins,
+        allow_credentials=bool(_cors_origins),
+        allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
+
+    # Reject oversized request bodies (default 1 MiB; override MAX_REQUEST_BYTES).
+    _max_body = int(os.environ.get("MAX_REQUEST_BYTES", str(1024 * 1024)))
+
+    @app.middleware("http")
+    async def limit_body_size(request: Request, call_next):
+        cl = request.headers.get("content-length")
+        if cl and cl.isdigit() and int(cl) > _max_body:
+            return JSONResponse(
+                status_code=413, content={"detail": "Request body too large"}
+            )
+        return await call_next(request)
 
     @app.middleware("http")
     async def monitoring_middleware(request: Request, call_next):
         """Middleware to track all requests."""
-        # Extract tenant ID from header if available
-        tenant_id = request.headers.get("X-API-Key", "anonymous")
-        if tenant_id in API_KEYS:
-            tenant_id = API_KEYS[tenant_id].get("tenant_id", tenant_id)
+        # Derive the tenant label only from a *valid* key — never echo a raw,
+        # unvalidated header value into the metrics label set.
+        raw_key = request.headers.get("X-API-Key")
+        tenant_id = "anonymous"
+        if raw_key and raw_key in API_KEYS:
+            tenant_id = API_KEYS[raw_key].get("tenant_id", "anonymous")
 
         with RequestTimer(
             tenant_id=tenant_id,
@@ -318,9 +402,9 @@ def create_app(mcp_server: Server) -> FastAPI:
         }
 
     @app.get("/prometheus-metrics")
-    async def prometheus_metrics():
+    async def prometheus_metrics(tenant_info: dict = Depends(verify_api_key)):
         """
-        Prometheus metrics endpoint (public, no auth required).
+        Prometheus metrics endpoint (requires a valid API key).
         Returns metrics for all tenants in Prometheus exposition format.
         """
         metrics_data = monitoring_service.get_prometheus_metrics()
@@ -335,8 +419,7 @@ def create_app(mcp_server: Server) -> FastAPI:
         Create a new API key (requires admin authorization).
         In production, implement proper admin authentication.
         """
-        if authorization != "Bearer admin-secret-token":
-            raise HTTPException(status_code=403, detail="Admin access required")
+        _require_admin(authorization)
 
         # Generate secure API key
         api_key = f"awx_mcp_{secrets.token_urlsafe(32)}"
@@ -372,8 +455,7 @@ def create_app(mcp_server: Server) -> FastAPI:
     @app.get("/api/keys")
     async def list_api_keys(authorization: str = Header(...)):
         """List all API keys (admin only)."""
-        if authorization != "Bearer admin-secret-token":
-            raise HTTPException(status_code=403, detail="Admin access required")
+        _require_admin(authorization)
 
         return {
             "keys": [
@@ -412,16 +494,14 @@ def create_app(mcp_server: Server) -> FastAPI:
                 method=message.get("method"),
             )
 
-            # Extract AWX config from headers (allows per-request credentials)
+            # Extract AWX config from headers (allows per-request credentials).
             awx_config = extract_awx_config_from_headers(request)
+            # SSRF guard: only honor a client-supplied base URL if allowlisted.
+            _validate_awx_base_url(awx_config.get("AWX_BASE_URL"))
 
-            # Temporarily set environment variables for this request
-            import os
-
-            original_env = {}
-            for key, value in awx_config.items():
-                original_env[key] = os.environ.get(key)
-                os.environ[key] = value
+            # Stash the override in a task-local ContextVar (NOT os.environ),
+            # so concurrent requests can't read each other's credentials.
+            ctx_token = set_awx_override(awx_config)
 
             try:
                 # Process MCP message through the server
@@ -438,13 +518,12 @@ def create_app(mcp_server: Server) -> FastAPI:
                 return result
 
             finally:
-                # Restore original environment
-                for key, original_value in original_env.items():
-                    if original_value is None:
-                        os.environ.pop(key, None)
-                    else:
-                        os.environ[key] = original_value
+                reset_awx_override(ctx_token)
 
+        except HTTPException:
+            # Auth / SSRF-guard rejections must surface as real HTTP errors,
+            # not be wrapped into a 200 JSON-RPC error body.
+            raise
         except Exception as e:
             logger.error("mcp_error", error=str(e), tenant_id=tenant_id)
             if message.get("method") == "tools/call":
@@ -499,18 +578,9 @@ def create_app(mcp_server: Server) -> FastAPI:
             },
         )
 
-    @app.options("/mcp")
-    @app.options("/mcp/sse")
-    async def mcp_options():
-        """Handle CORS preflight requests for MCP endpoints."""
-        return Response(
-            status_code=200,
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type, X-API-Key, X-AWX-Base-URL, X-AWX-Token, X-AWX-Platform, X-AWX-Username, X-AWX-Password, X-AWX-Verify-SSL",
-            },
-        )
+    # CORS preflight for /mcp and /mcp/sse is handled by CORSMiddleware against
+    # the CORS_ORIGINS allowlist (no wildcard). A manual handler that returned
+    # "Access-Control-Allow-Origin: *" was removed.
 
     # =============================================================================
 

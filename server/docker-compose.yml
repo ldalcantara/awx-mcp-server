@@ -13,7 +13,7 @@ services:
       - SERVER_PORT=8000
       - LOG_LEVEL=info
       - ENABLE_METRICS=true
-      - ADMIN_TOKEN=${ADMIN_TOKEN:-admin-secret-token}
+      - ADMIN_TOKEN=${ADMIN_TOKEN:?set ADMIN_TOKEN to a strong secret}
     volumes:
       - awx-mcp-data:/home/awxmcp/.config/awx-mcp
     restart: unless-stopped

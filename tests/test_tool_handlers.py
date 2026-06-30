@@ -14,13 +14,31 @@ tools call ``client.rest_client.<method>`` (dicts).
 """
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from awx_mcp_server.domain import AWXClientError, JobStatus, NoActiveEnvironmentError
 from awx_mcp_server.http_server import process_mcp_message
 from awx_mcp_server.mcp_server import create_mcp_server
+
+# Markers the call_tool error/validation paths emit; their ABSENCE means the
+# handler ran its success path.
+_ERROR_MARKERS = (
+    "AWX error",
+    "Authorization error",
+    "Could not reach AWX",
+    "Blocked by allowlist",
+    "Unexpected error in tool",
+    "missing required argument",
+    "validation error",
+    "Unknown tool",
+    "Error:",
+)
+
+
+def assert_ok(text: str) -> None:
+    assert not any(m in text for m in _ERROR_MARKERS), f"handler errored: {text[:160]}"
 
 
 class FakeClient:
@@ -200,6 +218,263 @@ async def test_job_delete_uses_rest_client(invoke):
     text = await invoke("awx_job_delete", {"job_id": 99}, client)
     assert "deleted successfully" in text
     client.rest_client.delete_job.assert_awaited_once_with(99)
+
+
+# --- Workflow jobs/templates (more of connor-griffin5's tools) ------------
+
+
+async def test_workflow_job_get(invoke):
+    client = FakeClient(
+        methods={"get_workflow_job": AsyncMock(return_value=MagicMock())}
+    )
+    assert_ok(await invoke("awx_workflow_job_get", {"job_id": 5}, client))
+    client.get_workflow_job.assert_awaited_once_with(5)
+
+
+async def test_workflow_jobs_list(invoke):
+    client = FakeClient(
+        methods={"list_workflow_jobs": AsyncMock(return_value=[MagicMock()])}
+    )
+    assert_ok(await invoke("awx_workflow_jobs_list", {}, client))
+
+
+async def test_workflow_job_cancel(invoke):
+    client = FakeClient(methods={"cancel_workflow_job": AsyncMock(return_value=None)})
+    assert_ok(await invoke("awx_workflow_job_cancel", {"job_id": 5}, client))
+    client.cancel_workflow_job.assert_awaited_once_with(5)
+
+
+async def test_workflow_job_nodes(invoke):
+    client = FakeClient(
+        methods={"get_workflow_job_nodes": AsyncMock(return_value=[MagicMock()])}
+    )
+    assert_ok(await invoke("awx_workflow_job_nodes", {"job_id": 5}, client))
+
+
+async def test_workflow_job_delete(invoke):
+    client = FakeClient(rest={"delete_workflow_job": AsyncMock(return_value=None)})
+    assert_ok(await invoke("awx_workflow_job_delete", {"job_id": 5}, client))
+    client.rest_client.delete_workflow_job.assert_awaited_once_with(5)
+
+
+async def test_workflow_job_relaunch(invoke):
+    client = FakeClient(
+        rest={"relaunch_workflow_job": AsyncMock(return_value=MagicMock())}
+    )
+    assert_ok(await invoke("awx_workflow_job_relaunch", {"job_id": 5}, client))
+
+
+async def test_workflow_template_nodes(invoke):
+    client = FakeClient(
+        rest={"get_workflow_job_template_nodes": AsyncMock(return_value=[])}
+    )
+    assert_ok(await invoke("awx_workflow_template_nodes", {"template_id": 12}, client))
+
+
+async def test_workflow_template_survey_none(invoke):
+    # Empty survey -> the "no survey configured" success path.
+    client = FakeClient(
+        rest={"get_workflow_job_template_survey": AsyncMock(return_value={})}
+    )
+    assert_ok(await invoke("awx_workflow_template_survey", {"template_id": 12}, client))
+
+
+async def test_workflow_template_schedules(invoke):
+    client = FakeClient(
+        rest={"list_workflow_job_template_schedules": AsyncMock(return_value=[])}
+    )
+    assert_ok(
+        await invoke("awx_workflow_template_schedules", {"template_id": 12}, client)
+    )
+
+
+async def test_workflow_template_launch_config(invoke):
+    client = FakeClient(
+        rest={"get_workflow_job_template_launch_config": AsyncMock(return_value={})}
+    )
+    assert_ok(
+        await invoke("awx_workflow_template_launch_config", {"template_id": 12}, client)
+    )
+
+
+# --- More notification tools ----------------------------------------------
+
+
+async def test_notification_template_get(invoke):
+    client = FakeClient(
+        rest={
+            "get_notification_template": AsyncMock(
+                return_value={"id": 4, "name": "n", "notification_type": "slack"}
+            )
+        }
+    )
+    assert_ok(await invoke("awx_notification_template_get", {"template_id": 4}, client))
+
+
+async def test_notification_template_update(invoke):
+    client = FakeClient(
+        rest={
+            "update_notification_template": AsyncMock(
+                return_value={"id": 4, "name": "n", "notification_type": "slack"}
+            )
+        }
+    )
+    assert_ok(
+        await invoke(
+            "awx_notification_template_update", {"template_id": 4, "name": "n2"}, client
+        )
+    )
+
+
+async def test_notification_template_delete(invoke):
+    client = FakeClient(
+        rest={"delete_notification_template": AsyncMock(return_value=None)}
+    )
+    assert_ok(
+        await invoke("awx_notification_template_delete", {"template_id": 4}, client)
+    )
+    client.rest_client.delete_notification_template.assert_awaited_once_with(4)
+
+
+async def test_notification_template_test(invoke):
+    client = FakeClient(
+        rest={
+            "test_notification_template": AsyncMock(
+                return_value={"id": 1, "status": "pending"}
+            )
+        }
+    )
+    assert_ok(
+        await invoke("awx_notification_template_test", {"template_id": 4}, client)
+    )
+
+
+async def test_notifications_list(invoke):
+    client = FakeClient(
+        rest={
+            "list_notifications": AsyncMock(
+                return_value=[
+                    {"id": 1, "status": "successful", "notification_type": "slack"}
+                ]
+            )
+        }
+    )
+    assert_ok(await invoke("awx_notifications_list", {}, client))
+
+
+async def test_job_template_notifications_list(invoke):
+    client = FakeClient(
+        rest={
+            "list_job_template_notification_templates": AsyncMock(
+                return_value=[{"id": 4, "name": "n", "notification_type": "slack"}]
+            )
+        }
+    )
+    assert_ok(
+        await invoke("awx_job_template_notifications_list", {"template_id": 1}, client)
+    )
+
+
+async def test_job_template_notification_disassociate(invoke):
+    client = FakeClient(
+        rest={"disassociate_job_template_notification": AsyncMock(return_value=None)}
+    )
+    assert_ok(
+        await invoke(
+            "awx_job_template_notification_disassociate",
+            {"template_id": 1, "notification_template_id": 4, "event": "error"},
+            client,
+        )
+    )
+
+
+async def test_workflow_template_notifications_list(invoke):
+    client = FakeClient(
+        rest={
+            "list_workflow_template_notification_templates": AsyncMock(
+                return_value=[{"id": 4, "name": "n", "notification_type": "slack"}]
+            )
+        }
+    )
+    assert_ok(
+        await invoke(
+            "awx_workflow_template_notifications_list", {"template_id": 12}, client
+        )
+    )
+
+
+async def test_workflow_template_notification_associate(invoke):
+    client = FakeClient(
+        rest={"associate_workflow_template_notification": AsyncMock(return_value=None)}
+    )
+    assert_ok(
+        await invoke(
+            "awx_workflow_template_notification_associate",
+            {"template_id": 12, "notification_template_id": 4, "event": "success"},
+            client,
+        )
+    )
+
+
+async def test_workflow_template_notification_disassociate(invoke):
+    client = FakeClient(
+        rest={
+            "disassociate_workflow_template_notification": AsyncMock(return_value=None)
+        }
+    )
+    assert_ok(
+        await invoke(
+            "awx_workflow_template_notification_disassociate",
+            {"template_id": 12, "notification_template_id": 4, "event": "success"},
+            client,
+        )
+    )
+
+
+# --- Core read/launch tools -----------------------------------------------
+
+
+async def test_templates_list(invoke):
+    client = FakeClient(
+        methods={"list_job_templates": AsyncMock(return_value=[MagicMock()])}
+    )
+    assert_ok(await invoke("awx_templates_list", {}, client))
+
+
+async def test_job_get(invoke):
+    client = FakeClient(methods={"get_job": AsyncMock(return_value=MagicMock())})
+    assert_ok(await invoke("awx_job_get", {"job_id": 7}, client))
+    client.get_job.assert_awaited_once_with(7)
+
+
+async def test_jobs_list(invoke):
+    client = FakeClient(methods={"list_jobs": AsyncMock(return_value=[MagicMock()])})
+    assert_ok(await invoke("awx_jobs_list", {}, client))
+
+
+async def test_projects_list(invoke):
+    client = FakeClient(
+        methods={"list_projects": AsyncMock(return_value=[MagicMock()])}
+    )
+    assert_ok(await invoke("awx_projects_list", {}, client))
+
+
+async def test_inventories_list(invoke):
+    client = FakeClient(
+        methods={"list_inventories": AsyncMock(return_value=[MagicMock()])}
+    )
+    assert_ok(await invoke("awx_inventories_list", {}, client))
+
+
+async def test_job_launch(invoke):
+    client = FakeClient(
+        methods={
+            "get_job_template": AsyncMock(return_value=MagicMock()),
+            "launch_job": AsyncMock(return_value=MagicMock()),
+        }
+    )
+    assert_ok(await invoke("awx_job_launch", {"template_id": 1}, client))
+    client.launch_job.assert_awaited_once()
 
 
 # --- Error / validation paths --------------------------------------------

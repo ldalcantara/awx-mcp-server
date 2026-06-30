@@ -2597,7 +2597,9 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 job_id = arguments["job_id"]
 
                 async with client:
-                    await client.delete_job(job_id)
+                    # CompositeAWXClient has no delete_job; go through rest_client
+                    # like every other delete_* tool (was an AttributeError bug).
+                    await client.rest_client.delete_job(job_id)
 
                 return [
                     TextContent(type="text", text=f"Job {job_id} deleted successfully")

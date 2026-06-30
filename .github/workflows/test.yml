@@ -239,7 +239,13 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    
+    # Needed for github/codeql-action/upload-sarif to publish results;
+    # without it the upload fails with "Resource not accessible by
+    # integration" on push events.
+    permissions:
+      contents: read
+      security-events: write
+
     steps:
       - uses: actions/checkout@v4
       

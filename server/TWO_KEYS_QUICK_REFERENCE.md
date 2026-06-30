@@ -68,7 +68,7 @@ echo 'export AAP_TOKEN="abc123xyz456..."' >> ~/.bashrc
 
 ```bash
 curl -X POST https://awx-mcp-server.surgexlabs.com/api/keys \
-  -H "Authorization: Bearer admin-secret-token" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "your-name-vscode",

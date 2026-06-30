@@ -77,12 +77,24 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 f"No stored environment found, checking environment variables: {e}"
             )
 
-            awx_base_url = os.getenv("AWX_BASE_URL")
-            awx_token = os.getenv("AWX_TOKEN")
-            awx_username = os.getenv("AWX_USERNAME")
-            awx_password = os.getenv("AWX_PASSWORD")
-            awx_platform = os.getenv("AWX_PLATFORM", "awx").lower()  # Default to AWX
-            awx_verify_ssl = os.getenv("AWX_VERIFY_SSL", "true").lower() == "true"
+            # Per-request overrides (HTTP X-AWX-* headers) arrive via a
+            # task-local ContextVar, not process-global os.environ, so
+            # concurrent requests can't read each other's credentials.
+            from awx_mcp_server.request_context import get_awx_override
+
+            override = get_awx_override()
+
+            def _cfg(key: str, default: Optional[str] = None) -> Optional[str]:
+                return override.get(key) or os.getenv(key, default)
+
+            awx_base_url = _cfg("AWX_BASE_URL")
+            awx_token = _cfg("AWX_TOKEN")
+            awx_username = _cfg("AWX_USERNAME")
+            awx_password = _cfg("AWX_PASSWORD")
+            awx_platform = (_cfg("AWX_PLATFORM", "awx") or "awx").lower()
+            awx_verify_ssl = (
+                _cfg("AWX_VERIFY_SSL", "true") or "true"
+            ).lower() == "true"
 
             # Validate platform type
             from awx_mcp_server.domain import PlatformType

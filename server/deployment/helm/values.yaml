@@ -81,7 +81,7 @@ config:
 
 # Secret values (should be overridden in production)
 secrets:
-  adminToken: "change-me-in-production"
+  adminToken: ""  # REQUIRED: override at install time (--set adminToken=...) with a strong secret
 
 # Monitoring
 prometheus:

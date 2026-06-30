@@ -228,11 +228,24 @@ jobs:
       - name: Check formatting with black
         run: black --check .
       
-      # ruff + black are enforced (strict). mypy is advisory for now: the
-      # codebase has a ~144-error static-typing backlog (mostly union-attr /
-      # attr-defined) that needs a dedicated typing pass; tracked separately.
-      # TODO: remove continue-on-error once the type errors are resolved.
-      - name: Run mypy (advisory)
+      # mypy is ratcheted: ENFORCED (must pass) on the already-clean typed core
+      # so it can't regress, and ADVISORY on the rest while the client
+      # return-type backlog (~113 errors, mostly dict-vs-domain-model) is worked
+      # down. TODO: fold modules into the enforced set as they reach zero.
+      - name: Run mypy (enforced — typed core)
+        run: |
+          mypy \
+            server/src/awx_mcp_server/domain \
+            server/src/awx_mcp_server/storage \
+            server/src/awx_mcp_server/utils \
+            server/src/awx_mcp_server/request_context.py \
+            server/src/awx_mcp_server/monitoring.py \
+            server/src/awx_mcp_server/auth.py \
+            server/src/awx_mcp_server/cli.py \
+            server/src/awx_mcp_server/__main__.py \
+            server/src/awx_mcp_server/__init__.py
+
+      - name: Run mypy (advisory — full package)
         continue-on-error: true
         run: mypy server/src
 

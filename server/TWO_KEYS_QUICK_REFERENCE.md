@@ -22,7 +22,7 @@
 | **Purpose** | Authenticate MCP server → AAP/AWX |
 | **Who owns it** | You (each user has their own) |
 | **Where to get** | AAP UI → Profile → Tokens |
-| **Example** | `abc123xyz456def789...` |
+| **Example** | `<YOUR_AAP_TOKEN>` |
 | **Environment Variable** | `AAP_TOKEN` |
 | **VS Code Field** | `env.AAP_TOKEN` or `secrets.X-AWX-Token` |
 | **Required?** | ✅ **YES - Always** |
@@ -38,14 +38,14 @@
 
 **Windows PowerShell:**
 ```powershell
-$env:AAP_TOKEN = "abc123xyz456..."
-[System.Environment]::SetEnvironmentVariable('AAP_TOKEN', 'abc123xyz456...', 'User')
+$env:AAP_TOKEN = "<YOUR_AAP_TOKEN>"
+[System.Environment]::SetEnvironmentVariable('AAP_TOKEN', '<YOUR_AAP_TOKEN>', 'User')
 ```
 
 **Linux/macOS:**
 ```bash
-export AAP_TOKEN="abc123xyz456..."
-echo 'export AAP_TOKEN="abc123xyz456..."' >> ~/.bashrc
+export AAP_TOKEN="<YOUR_AAP_TOKEN>"
+echo 'export AAP_TOKEN="<YOUR_AAP_TOKEN>"' >> ~/.bashrc
 ```
 
 ---
@@ -57,7 +57,7 @@ echo 'export AAP_TOKEN="abc123xyz456..."' >> ~/.bashrc
 | **Purpose** | Authenticate VS Code → MCP Server |
 | **Who owns it** | You (issued by MCP admin) |
 | **Where to get** | MCP Server Administrator |
-| **Example** | `awx_mcp_def789ghi012...` |
+| **Example** | `awx_mcp_<YOUR_API_KEY>` |
 | **Environment Variable** | `MCP_API_KEY` |
 | **VS Code Field** | `headers.X-API-Key` |
 | **Required?** | ⚠️ **Optional (recommended for production)** |
@@ -77,20 +77,20 @@ curl -X POST https://awx-mcp-server.example.com/api/keys \
   }'
 ```
 
-**They will give you**: `awx_mcp_def789ghi012...`
+**They will give you**: `awx_mcp_<YOUR_API_KEY>`
 
 ### Save as Environment Variable:
 
 **Windows PowerShell:**
 ```powershell
-$env:MCP_API_KEY = "awx_mcp_def789ghi012..."
-[System.Environment]::SetEnvironmentVariable('MCP_API_KEY', 'awx_mcp_def789ghi012...', 'User')
+$env:MCP_API_KEY = "awx_mcp_<YOUR_API_KEY>"
+[System.Environment]::SetEnvironmentVariable('MCP_API_KEY', 'awx_mcp_<YOUR_API_KEY>', 'User')
 ```
 
 **Linux/macOS:**
 ```bash
-export MCP_API_KEY="awx_mcp_def789ghi012..."
-echo 'export MCP_API_KEY="awx_mcp_def789ghi012..."' >> ~/.bashrc
+export MCP_API_KEY="awx_mcp_<YOUR_API_KEY>"
+echo 'export MCP_API_KEY="awx_mcp_<YOUR_API_KEY>"' >> ~/.bashrc
 ```
 
 ---
@@ -133,12 +133,12 @@ echo 'export MCP_API_KEY="awx_mcp_def789ghi012..."' >> ~/.bashrc
       "url": "https://awx-mcp-server.example.com/mcp",
       "transport": "http",
       "headers": {
-        "X-API-Key": "awx_mcp_def789ghi012...",
+        "X-API-Key": "awx_mcp_<YOUR_API_KEY>",
         "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {
-        "X-AWX-Token": "abc123xyz456..."
+        "X-AWX-Token": "<YOUR_AAP_TOKEN>"
       }
     }
   }
@@ -163,7 +163,7 @@ echo 'export MCP_API_KEY="awx_mcp_def789ghi012..."' >> ~/.bashrc
         "X-AWX-Platform": "aap"
       },
       "secrets": {
-        "X-AWX-Token": "abc123xyz456..."
+        "X-AWX-Token": "<YOUR_AAP_TOKEN>"
       }
     }
   }
@@ -228,14 +228,14 @@ Do you have a remote MCP server?
 
 **Windows PowerShell:**
 ```powershell
-echo $env:AAP_TOKEN        # Should show: abc123xyz456...
-echo $env:MCP_API_KEY      # Should show: awx_mcp_def789ghi012...
+echo $env:AAP_TOKEN        # Should show: <YOUR_AAP_TOKEN>
+echo $env:MCP_API_KEY      # Should show: awx_mcp_<YOUR_API_KEY>
 ```
 
 **Linux/macOS:**
 ```bash
-echo $AAP_TOKEN            # Should show: abc123xyz456...
-echo $MCP_API_KEY          # Should show: awx_mcp_def789ghi012...
+echo $AAP_TOKEN            # Should show: <YOUR_AAP_TOKEN>
+echo $MCP_API_KEY          # Should show: awx_mcp_<YOUR_API_KEY>
 ```
 
 ### Test 2: Test MCP Server Connection
@@ -244,9 +244,12 @@ echo $MCP_API_KEY          # Should show: awx_mcp_def789ghi012...
 # Test health endpoint
 curl https://awx-mcp-server.example.com/health
 
-# Test with your MCP API key
-curl https://awx-mcp-server.example.com/api/v1/environments \
-  -H "X-API-Key: awx_mcp_def789ghi012..."
+# Test the MCP endpoint with your key
+curl -X POST https://awx-mcp-server.example.com/mcp \
+  -H "X-API-Key: awx_mcp_<YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "env_list", "arguments": {}}}'
 ```
 
 ### Test 3: Test in Copilot Chat

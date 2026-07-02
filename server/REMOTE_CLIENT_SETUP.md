@@ -63,7 +63,7 @@ MCP Server ─────[AAP Token]────> AAP/AWX
 - **Who needs it**: Every user (your personal credentials)
 - **Where to get**: From your AAP UI → Profile → Tokens
 - **Where stored**: VS Code secrets (client-side, encrypted)
-- **Format**: `abc123xyz...` (Bearer token)
+- **Format**: `<YOUR_AAP_TOKEN>` (Bearer token)
 - **VS Code field**: `secrets.X-AWX-Token`
 - **Required**: ✅ **YES - Always required**
 
@@ -77,7 +77,7 @@ VS Code ─────[MCP API Key]────> MCP Server
 - **Who needs it**: Every user (prevents unauthorized access to MCP server)
 - **Where to get**: From your MCP server administrator
 - **Where stored**: VS Code settings.json or environment variable
-- **Format**: `awx_mcp_abc123xyz...`
+- **Format**: `awx_mcp_<YOUR_API_KEY>`
 - **VS Code field**: `headers.X-API-Key`
 - **Required**: ⚠️ **Optional (but recommended for production)**
 
@@ -163,7 +163,7 @@ curl -X POST http://your-server:8000/api/keys \
 **Response**:
 ```json
 {
-  "api_key": "awx_mcp_abc123xyz...",
+  "api_key": "awx_mcp_<YOUR_API_KEY>",
   "name": "john-doe-vscode",
   "tenant_id": "john.doe@company.com",
   "created_at": "2026-02-21T12:00:00",
@@ -176,18 +176,18 @@ curl -X POST http://your-server:8000/api/keys \
 **To save as environment variable** (optional):
 ```powershell
 # Windows PowerShell
-$env:MCP_API_KEY = "awx_mcp_abc123xyz..."
+$env:MCP_API_KEY = "awx_mcp_<YOUR_API_KEY>"
 
 # Or permanently
-[System.Environment]::SetEnvironmentVariable('MCP_API_KEY', 'awx_mcp_abc123xyz...', 'User')
+[System.Environment]::SetEnvironmentVariable('MCP_API_KEY', 'awx_mcp_<YOUR_API_KEY>', 'User')
 ```
 
 ```bash
 # Linux/macOS
-export MCP_API_KEY="awx_mcp_abc123xyz..."
+export MCP_API_KEY="awx_mcp_<YOUR_API_KEY>"
 
 # Add to ~/.bashrc or ~/.zshrc for persistence
-echo 'export MCP_API_KEY="awx_mcp_abc123xyz..."' >> ~/.bashrc
+echo 'export MCP_API_KEY="awx_mcp_<YOUR_API_KEY>"' >> ~/.bashrc
 ```
 
 #### **Option B: Without API Key** (Testing/Development Only)
@@ -204,7 +204,7 @@ If your MCP server is running without API key enforcement, you can skip this ste
 
 3. **Click "Create Token"** or "Add Token"
 
-4. **Copy the token** (it will look like: `abc123xyz...`)
+4. **Copy the token** (it will look like: `<YOUR_AAP_TOKEN>`)
 
 5. **Save as environment variable** (optional):
 
@@ -255,7 +255,7 @@ echo $AAP_TOKEN
       "url": "http://your-mcp-server.com:8000/mcp",
       "transport": "http",
       "headers": {
-        "X-API-Key": "awx_mcp_abc123xyz...",
+        "X-API-Key": "awx_mcp_<YOUR_API_KEY>",
         "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
@@ -345,7 +345,7 @@ For real-time updates and job monitoring:
       "url": "http://your-mcp-server.com:8000/mcp/sse",
       "transport": "sse",
       "headers": {
-        "X-API-Key": "awx_mcp_abc123xyz...",
+        "X-API-Key": "awx_mcp_<YOUR_API_KEY>",
         "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
@@ -537,9 +537,12 @@ Configure multiple AAP instances:
 # Test server health
 curl http://your-server:8000/health
 
-# Test API with your key
-curl http://your-server:8000/api/v1/environments \
-  -H "X-API-Key: awx_mcp_abc123xyz..."
+# Test the MCP endpoint with your key
+curl -X POST http://your-server:8000/mcp \
+  -H "X-API-Key: awx_mcp_<YOUR_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "env_list", "arguments": {}}}'
 ```
 
 ### 2. Test in Copilot Chat
@@ -671,14 +674,14 @@ Based on your AAP URL: `https://aap.dev.example.com`
       "url": "https://awx-mcp-server.example.com/mcp",
       "transport": "http",
       "headers": {
-        "X-API-Key": "awx_mcp_example_dev_key_abc123",
+        "X-API-Key": "awx_mcp_<YOUR_API_KEY>",
         "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap",
         "X-AWX-Verify-SSL": "true",
         "X-Environment": "development"
       },
       "secrets": {
-        "X-AWX-Token": "example-aap-dev-token"
+        "X-AWX-Token": "<YOUR_AAP_TOKEN>"
       }
     }
   }
@@ -904,15 +907,15 @@ Here's the **complete step-by-step flow** to get both keys and configure VS Code
 
 4. **Click "Add"** or "Create Token" button
 
-5. **Copy the token** (looks like: `abc123xyz456...`)
+5. **Copy the token** (looks like: `<YOUR_AAP_TOKEN>`)
 
 6. **Save to environment variable** (Windows PowerShell):
    ```powershell
    # Set for current session
-   $env:AAP_TOKEN = "abc123xyz456..."
+   $env:AAP_TOKEN = "<YOUR_AAP_TOKEN>"
    
    # Set permanently
-   [System.Environment]::SetEnvironmentVariable('AAP_TOKEN', 'abc123xyz456...', 'User')
+   [System.Environment]::SetEnvironmentVariable('AAP_TOKEN', '<YOUR_AAP_TOKEN>', 'User')
    
    # Verify it's saved
    echo $env:AAP_TOKEN
@@ -921,10 +924,10 @@ Here's the **complete step-by-step flow** to get both keys and configure VS Code
    **Or** (Linux/macOS):
    ```bash
    # Set for current session
-   export AAP_TOKEN="abc123xyz456..."
+   export AAP_TOKEN="<YOUR_AAP_TOKEN>"
    
    # Set permanently (add to ~/.bashrc or ~/.zshrc)
-   echo 'export AAP_TOKEN="abc123xyz456..."' >> ~/.bashrc
+   echo 'export AAP_TOKEN="<YOUR_AAP_TOKEN>"' >> ~/.bashrc
    source ~/.bashrc
    
    # Verify
@@ -951,15 +954,15 @@ curl -X POST https://awx-mcp-server.example.com/api/keys \
   }'
 ```
 
-**Admin sends you the API key**: `awx_mcp_def789ghi012...`
+**Admin sends you the API key**: `awx_mcp_<YOUR_API_KEY>`
 
 **Save to environment variable** (Windows PowerShell):
 ```powershell
 # Set for current session
-$env:MCP_API_KEY = "awx_mcp_def789ghi012..."
+$env:MCP_API_KEY = "awx_mcp_<YOUR_API_KEY>"
 
 # Set permanently
-[System.Environment]::SetEnvironmentVariable('MCP_API_KEY', 'awx_mcp_def789ghi012...', 'User')
+[System.Environment]::SetEnvironmentVariable('MCP_API_KEY', 'awx_mcp_<YOUR_API_KEY>', 'User')
 
 # Verify
 echo $env:MCP_API_KEY
@@ -968,10 +971,10 @@ echo $env:MCP_API_KEY
 **Or** (Linux/macOS):
 ```bash
 # Set for current session
-export MCP_API_KEY="awx_mcp_def789ghi012..."
+export MCP_API_KEY="awx_mcp_<YOUR_API_KEY>"
 
 # Set permanently
-echo 'export MCP_API_KEY="awx_mcp_def789ghi012..."' >> ~/.bashrc
+echo 'export MCP_API_KEY="awx_mcp_<YOUR_API_KEY>"' >> ~/.bashrc
 source ~/.bashrc
 
 # Verify
@@ -1050,12 +1053,12 @@ If you prefer NOT to use environment variables:
       "url": "https://awx-mcp-server.example.com/mcp",
       "transport": "http",
       "headers": {
-        "X-API-Key": "awx_mcp_def789ghi012...",
+        "X-API-Key": "awx_mcp_<YOUR_API_KEY>",
         "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {
-        "X-AWX-Token": "abc123xyz456..."
+        "X-AWX-Token": "<YOUR_AAP_TOKEN>"
       }
     }
   }
@@ -1073,8 +1076,8 @@ If you prefer NOT to use environment variables:
 
 | Key | Environment Variable | VS Code Field | Example Value |
 |-----|---------------------|---------------|---------------|
-| **Key #1** (AAP Token) | `AAP_TOKEN` | `env.AAP_TOKEN` or `secrets.X-AWX-Token` | `abc123xyz456...` |
-| **Key #2** (MCP API Key) | `MCP_API_KEY` | `headers.X-API-Key` | `awx_mcp_def789ghi012...` |
+| **Key #1** (AAP Token) | `AAP_TOKEN` | `env.AAP_TOKEN` or `secrets.X-AWX-Token` | `<YOUR_AAP_TOKEN>` |
+| **Key #2** (MCP API Key) | `MCP_API_KEY` | `headers.X-API-Key` | `awx_mcp_<YOUR_API_KEY>` |
 
 ---
 

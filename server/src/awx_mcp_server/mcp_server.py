@@ -1,7 +1,9 @@
 """MCP Server implementation for AWX integration."""
 
 import asyncio
+import hashlib
 import os
+from collections import OrderedDict
 from typing import Any, Optional
 from uuid import uuid4
 
@@ -50,6 +52,45 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
     config_manager = ConfigManager(tenant_id=tenant_id)
     credential_store = CredentialStore(tenant_id=tenant_id)
 
+    # One client per resolved (URL, credentials), so repeated tool calls reuse
+    # a warm HTTP connection pool instead of paying a fresh TCP+TLS handshake
+    # per call. Cached clients are marked ``persistent`` so the per-handler
+    # ``async with client`` blocks don't close them.
+    client_cache: OrderedDict[tuple, CompositeAWXClient] = OrderedDict()
+    client_cache_max = 8
+
+    def cached_client(
+        env: EnvironmentConfig,
+        username: Optional[str],
+        secret: str,
+        is_token: bool,
+    ) -> CompositeAWXClient:
+        # env_id is excluded from the key: the env-var fallback mints a fresh
+        # uuid on every call, which would defeat the cache.
+        key = (
+            str(env.base_url),
+            username or "",
+            hashlib.sha256((secret or "").encode()).hexdigest(),
+            is_token,
+            env.verify_ssl,
+        )
+        client = client_cache.get(key)
+        if client is None:
+            client = CompositeAWXClient(env, username, secret, is_token)
+            client.persistent = True
+            while len(client_cache) >= client_cache_max:
+                _, evicted = client_cache.popitem(last=False)
+                try:
+                    asyncio.get_running_loop().create_task(evicted.aclose())
+                except RuntimeError:
+                    # No running loop (sync caller): dropping the reference
+                    # lets the pool's idle sockets be reclaimed by GC.
+                    pass
+            client_cache[key] = client
+        else:
+            client_cache.move_to_end(key)
+        return client
+
     def get_active_client() -> tuple[EnvironmentConfig, CompositeAWXClient]:
         """Get client for active environment, falling back to environment variables if no config exists."""
         try:
@@ -68,8 +109,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 )
                 is_token = True
 
-            client = CompositeAWXClient(env, username, secret, is_token)
-            return env, client
+            return env, cached_client(env, username, secret, is_token)
 
         except (NoActiveEnvironmentError, Exception) as e:
             # Fall back to environment variables
@@ -132,12 +172,12 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             # Determine auth method
             if awx_token:
                 logger.info("Using AWX_TOKEN from environment variables")
-                client = CompositeAWXClient(temp_env, "", awx_token, is_token=True)
+                client = cached_client(temp_env, "", awx_token, is_token=True)
             elif awx_username and awx_password:
                 logger.info(
                     "Using AWX_USERNAME/AWX_PASSWORD from environment variables"
                 )
-                client = CompositeAWXClient(
+                client = cached_client(
                     temp_env, awx_username, awx_password, is_token=False
                 )
             else:

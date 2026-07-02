@@ -46,6 +46,10 @@ class CompositeAWXClient(AWXClient):
         self.cli_client = AwxkitClient(config, username, secret, is_token)
         self.rest_client = RestAWXClient(config, username, secret, is_token)
         self.prefer_cli = False  # Prefer REST API (more reliable on Windows)
+        # When True (set by a client cache that owns this instance), leaving an
+        # ``async with`` block keeps the HTTP connection pool open so later
+        # tool calls reuse warm connections instead of re-handshaking.
+        self.persistent = False
 
     async def __aenter__(self) -> "CompositeAWXClient":
         """Async context manager entry."""
@@ -54,7 +58,12 @@ class CompositeAWXClient(AWXClient):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
-        await self.rest_client.__aexit__(exc_type, exc_val, exc_tb)
+        if not self.persistent:
+            await self.rest_client.__aexit__(exc_type, exc_val, exc_tb)
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP resources regardless of ``persistent``."""
+        await self.rest_client.client.aclose()
 
     async def test_connection(self) -> bool:
         """Test connection - prefer CLI."""

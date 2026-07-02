@@ -59,7 +59,7 @@ You have **three ways** to install and run the AWX MCP Server:
 |--------|----------|--------------|
 | **📦 PyPI (pip)** | Quick install, production use | `pip install awx-mcp-server` |
 | **🔧 From Source** | Customization, development, enterprise forks | Clone from GitHub, edit code |
-| **🐳 Docker** | Containerized deployment, teams | `docker run surgexlabs/awx-mcp-server` |
+| **🐳 Docker** | Containerized deployment, teams | `docker run ldalcantara/awx-mcp-server` |
 
 **→ For customization and running from your own repository, see [INSTALL_FROM_SOURCE.md](INSTALL_FROM_SOURCE.md)**
 
@@ -109,7 +109,7 @@ python -m awx_mcp_server --version
 **Quick install**:
 ```bash
 # Clone the repository (or your fork)
-git clone https://github.com/SurgeX-Labs/awx-mcp-server.git
+git clone https://github.com/ldalcantara/awx-mcp-server.git
 cd awx-mcp-server/awx-mcp-python/server
 
 # Create virtual environment

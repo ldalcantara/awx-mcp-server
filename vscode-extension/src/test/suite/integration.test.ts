@@ -6,7 +6,7 @@ suite('Integration Test Suite', () => {
     test('Extension should activate', async function() {
         this.timeout(10000);
         
-        const ext = vscode.extensions.getExtension('SurgeXlabs.awx-mcp-extension');
+        const ext = vscode.extensions.getExtension('ldalcantara.awx-mcp-extension');
         assert.ok(ext, 'Extension should be installed');
         
         if (!ext.isActive) {
@@ -17,7 +17,7 @@ suite('Integration Test Suite', () => {
     });
 
     test('Extension should register activity bar view', async () => {
-        const ext = vscode.extensions.getExtension('SurgeXlabs.awx-mcp-extension');
+        const ext = vscode.extensions.getExtension('ldalcantara.awx-mcp-extension');
         if (ext && !ext.isActive) {
             await ext.activate();
         }
@@ -69,7 +69,7 @@ suite('Integration Test Suite', () => {
     });
 
     test('Status bar should be initialized', async () => {
-        const ext = vscode.extensions.getExtension('SurgeXlabs.awx-mcp-extension');
+        const ext = vscode.extensions.getExtension('ldalcantara.awx-mcp-extension');
         if (ext && !ext.isActive) {
             await ext.activate();
         }

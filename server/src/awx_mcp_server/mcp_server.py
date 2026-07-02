@@ -158,6 +158,392 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
 
     # Environment Management Tools
 
+    # --- Migrated tool handlers (registry pattern) ---
+    async def _h_awx_workflow_templates_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            templates = await client.list_workflow_job_templates(
+                name_filter=arguments.get("filter"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Workflow Job Templates ({len(templates)}):\n\n"
+        for tmpl in templates:
+            result += f"ID: {tmpl.id} - {tmpl.name}\n"
+            if tmpl.description:
+                result += f"  Description: {tmpl.description}\n"
+            if tmpl.status:
+                result += f"  Status: {tmpl.status}\n"
+            if tmpl.last_job_run:
+                result += f"  Last Run: {tmpl.last_job_run.isoformat()}\n"
+            if tmpl.next_job_run:
+                result += f"  Next Run: {tmpl.next_job_run.isoformat()}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_template_get(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            tmpl = await client.get_workflow_job_template(template_id)
+
+        result = f"Workflow Job Template {template_id}:\n\n"
+        result += f"Name: {tmpl.name}\n"
+        if tmpl.description:
+            result += f"Description: {tmpl.description}\n"
+        if tmpl.organization:
+            result += f"Organization: {tmpl.organization}\n"
+        if tmpl.inventory:
+            result += f"Inventory: {tmpl.inventory}\n"
+        if tmpl.limit:
+            result += f"Limit: {tmpl.limit}\n"
+        if tmpl.status:
+            result += f"Status: {tmpl.status}\n"
+        result += f"Survey Enabled: {tmpl.survey_enabled}\n"
+        result += f"Allow Simultaneous: {tmpl.allow_simultaneous}\n"
+        if tmpl.last_job_run:
+            result += f"Last Run: {tmpl.last_job_run.isoformat()}\n"
+        if tmpl.next_job_run:
+            result += f"Next Run: {tmpl.next_job_run.isoformat()}\n"
+        result += "\nLaunch Options:\n"
+        result += f"  Ask Variables: {tmpl.ask_variables_on_launch}\n"
+        result += f"  Ask Inventory: {tmpl.ask_inventory_on_launch}\n"
+        result += f"  Ask Limit: {tmpl.ask_limit_on_launch}\n"
+        result += f"  Ask Tags: {tmpl.ask_tags_on_launch}\n"
+        result += f"  Ask Skip Tags: {tmpl.ask_skip_tags_on_launch}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_job_launch(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            tmpl = await client.get_workflow_job_template(template_id)
+            check_allowlist(env, template_id, tmpl.name)
+
+            wf_job = await client.launch_workflow_job(
+                template_id=template_id,
+                extra_vars=arguments.get("extra_vars"),
+                limit=arguments.get("limit"),
+                tags=arguments.get("tags"),
+                skip_tags=arguments.get("skip_tags"),
+            )
+
+        logger.info(
+            "workflow_job_launched",
+            environment=env.name,
+            template=tmpl.name,
+            job_id=wf_job.id,
+        )
+
+        result = "✓ Workflow job launched successfully\n\n"
+        result += f"Workflow Job ID: {wf_job.id}\n"
+        result += f"Name: {wf_job.name}\n"
+        result += f"Status: {wf_job.status.value}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_job_get(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            wf_job = await client.get_workflow_job(job_id)
+
+        result = f"Workflow Job {job_id} Details:\n\n"
+        result += f"Name: {wf_job.name}\n"
+        result += f"Status: {wf_job.status.value}\n"
+        result += f"Failed: {wf_job.failed}\n"
+        if wf_job.workflow_job_template:
+            result += f"Template ID: {wf_job.workflow_job_template}\n"
+        if wf_job.launch_type:
+            result += f"Launch Type: {wf_job.launch_type}\n"
+        if wf_job.started:
+            result += f"Started: {wf_job.started.isoformat()}\n"
+        if wf_job.finished:
+            result += f"Finished: {wf_job.finished.isoformat()}\n"
+        if wf_job.elapsed:
+            result += f"Elapsed: {wf_job.elapsed}s\n"
+        if wf_job.limit:
+            result += f"Limit: {wf_job.limit}\n"
+        if wf_job.job_explanation:
+            result += f"\nExplanation: {wf_job.job_explanation}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_jobs_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+
+        async with client:
+            wf_jobs = await client.list_workflow_jobs(
+                status=arguments.get("status"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+                workflow_template_id=arguments.get("workflow_template_id"),
+            )
+
+        result = f"Workflow Jobs ({len(wf_jobs)}):\n\n"
+        for wf_job in wf_jobs:
+            result += f"ID: {wf_job.id} - {wf_job.name}\n"
+            result += f"  Status: {wf_job.status.value}\n"
+            if wf_job.launch_type:
+                result += f"  Launch Type: {wf_job.launch_type}\n"
+            if wf_job.started:
+                result += f"  Started: {wf_job.started.isoformat()}\n"
+            if wf_job.finished:
+                result += f"  Finished: {wf_job.finished.isoformat()}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_job_cancel(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            await client.cancel_workflow_job(job_id)
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Workflow job {job_id} cancellation requested",
+            )
+        ]
+
+    async def _h_awx_workflow_job_nodes(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            nodes = await client.get_workflow_job_nodes(
+                job_id=job_id,
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 100),
+            )
+
+        result = f"Workflow Job {job_id} Nodes ({len(nodes)}):\n\n"
+        for node in nodes:
+            # Extract names from summary_fields
+            sf = node.summary_fields
+            template_name = sf.get("unified_job_template", {}).get("name", "Unknown")
+            job_type = sf.get("unified_job_template", {}).get(
+                "unified_job_type", "unknown"
+            )
+            job_info = sf.get("job", {})
+            job_status = job_info.get("status", "unknown")
+            job_failed = job_info.get("failed", False)
+            job_elapsed = job_info.get("elapsed")
+            child_job_id = node.job
+
+            status_icon = (
+                "✗" if job_failed else ("✓" if job_status == "successful" else "●")
+            )
+            result += f"{status_icon} Node: {template_name} ({job_type})\n"
+            if child_job_id:
+                result += f"  Job ID: {child_job_id} | Status: {job_status}"
+                if job_elapsed is not None:
+                    result += f" | Elapsed: {job_elapsed}s"
+                result += "\n"
+            if node.do_not_run:
+                result += "  (skipped)\n"
+            connections = []
+            if node.success_nodes:
+                connections.append(f"success -> {node.success_nodes}")
+            if node.failure_nodes:
+                connections.append(f"failure -> {node.failure_nodes}")
+            if node.always_nodes:
+                connections.append(f"always -> {node.always_nodes}")
+            if connections:
+                result += f"  Connections: {', '.join(connections)}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_job_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            await client.rest_client.delete_workflow_job(job_id)
+
+        return [
+            TextContent(type="text", text=f"Workflow job {job_id} deleted successfully")
+        ]
+
+    async def _h_awx_workflow_job_relaunch(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            wf_job = await client.rest_client.relaunch_workflow_job(job_id)
+
+        result = "Workflow job relaunched successfully\n\n"
+        result += f"New Workflow Job ID: {wf_job.id}\n"
+        result += f"Name: {wf_job.name}\n"
+        result += f"Status: {wf_job.status.value}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_template_nodes(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            nodes = await client.rest_client.get_workflow_job_template_nodes(
+                template_id,
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 100),
+            )
+
+        result = f"Workflow Template {template_id} Nodes ({len(nodes)}):\n\n"
+        for node in nodes:
+            sf = node.get("summary_fields", {})
+            ujt = sf.get("unified_job_template", {})
+            template_name = ujt.get("name", "Unknown")
+            job_type = ujt.get("unified_job_type", "unknown")
+
+            result += f"Node {node['id']}: {template_name} ({job_type})\n"
+            connections = []
+            if node.get("success_nodes"):
+                connections.append(f"success -> {node['success_nodes']}")
+            if node.get("failure_nodes"):
+                connections.append(f"failure -> {node['failure_nodes']}")
+            if node.get("always_nodes"):
+                connections.append(f"always -> {node['always_nodes']}")
+            if connections:
+                result += f"  Connections: {', '.join(connections)}\n"
+            if node.get("all_parents_must_converge"):
+                result += "  All parents must converge: True\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_template_survey(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            survey = await client.rest_client.get_workflow_job_template_survey(
+                template_id
+            )
+
+        spec = survey.get("spec", [])
+        if not spec:
+            result = (
+                f"Workflow Template {template_id} has no survey questions configured.\n"
+            )
+        else:
+            result = (
+                f"Workflow Template {template_id} Survey ({len(spec)} questions):\n\n"
+            )
+            if survey.get("name"):
+                result += f"Name: {survey['name']}\n"
+            if survey.get("description"):
+                result += f"Description: {survey['description']}\n"
+            result += "\n"
+            for q in spec:
+                required = " (required)" if q.get("required") else ""
+                result += f"Variable: {q.get('variable')}{required}\n"
+                result += f"  Question: {q.get('question_name', '')}\n"
+                result += f"  Type: {q.get('type', 'text')}\n"
+                if q.get("default"):
+                    result += f"  Default: {q['default']}\n"
+                if q.get("choices"):
+                    result += f"  Choices: {q['choices']}\n"
+                result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_template_schedules(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            schedules = await client.rest_client.list_workflow_job_template_schedules(
+                template_id,
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Workflow Template {template_id} Schedules ({len(schedules)}):\n\n"
+        for s in schedules:
+            result += f"ID: {s['id']} - {s['name']}\n"
+            if s.get("description"):
+                result += f"  Description: {s['description']}\n"
+            result += f"  Enabled: {s.get('enabled', False)}\n"
+            result += f"  RRule: {s.get('rrule', 'N/A')}\n"
+            if s.get("next_run"):
+                result += f"  Next Run: {s['next_run']}\n"
+            if s.get("dtstart"):
+                result += f"  Start: {s['dtstart']}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_template_launch_config(
+        arguments: Any,
+    ) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            config = await client.rest_client.get_workflow_job_template_launch_config(
+                template_id
+            )
+
+        result = f"Workflow Template {template_id} Launch Configuration:\n\n"
+        result += f"Can Start Without User Input: {config.get('can_start_without_user_input', False)}\n"
+        result += f"Survey Enabled: {config.get('survey_enabled', False)}\n"
+        result += f"Variables Needed: {config.get('variables_needed_to_start', [])}\n\n"
+
+        result += "Prompt Options:\n"
+        for key in [
+            "ask_inventory_on_launch",
+            "ask_limit_on_launch",
+            "ask_scm_branch_on_launch",
+            "ask_variables_on_launch",
+            "ask_labels_on_launch",
+            "ask_tags_on_launch",
+            "ask_skip_tags_on_launch",
+        ]:
+            if config.get(key):
+                result += f"  {key}: True\n"
+
+        defaults = config.get("defaults", {})
+        if defaults:
+            result += "\nDefaults:\n"
+            for key, value in defaults.items():
+                if value is not None:
+                    result += f"  {key}: {value}\n"
+
+        missing = config.get("node_templates_missing", [])
+        if missing:
+            result += f"\nMissing Node Templates: {missing}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    # ── Local Ansible Development Tool Handlers ──
+
+    _HANDLERS: dict[str, Any] = {
+        "awx_workflow_templates_list": _h_awx_workflow_templates_list,
+        "awx_workflow_template_get": _h_awx_workflow_template_get,
+        "awx_workflow_job_launch": _h_awx_workflow_job_launch,
+        "awx_workflow_job_get": _h_awx_workflow_job_get,
+        "awx_workflow_jobs_list": _h_awx_workflow_jobs_list,
+        "awx_workflow_job_cancel": _h_awx_workflow_job_cancel,
+        "awx_workflow_job_nodes": _h_awx_workflow_job_nodes,
+        "awx_workflow_job_delete": _h_awx_workflow_job_delete,
+        "awx_workflow_job_relaunch": _h_awx_workflow_job_relaunch,
+        "awx_workflow_template_nodes": _h_awx_workflow_template_nodes,
+        "awx_workflow_template_survey": _h_awx_workflow_template_survey,
+        "awx_workflow_template_schedules": _h_awx_workflow_template_schedules,
+        "awx_workflow_template_launch_config": _h_awx_workflow_template_launch_config,
+    }
+
     @mcp_server.list_tools()
     async def list_tools() -> list[Tool]:
         """List available MCP tools."""
@@ -1707,6 +2093,8 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         """Handle tool calls."""
         try:
             logger.info("tool_call", tool=name, arguments=arguments)
+            if name in _HANDLERS:
+                return await _HANDLERS[name](arguments)
 
             if name == "env_list":
                 envs = config_manager.list_environments()
@@ -2676,382 +3064,6 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                         result += f"{i}. {fix}\n"
 
                 return [TextContent(type="text", text=result)]
-
-            # ── Workflow Job Template Handlers ──
-
-            elif name == "awx_workflow_templates_list":
-                env, client = get_active_client()
-                async with client:
-                    templates = await client.list_workflow_job_templates(
-                        name_filter=arguments.get("filter"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Workflow Job Templates ({len(templates)}):\n\n"
-                for tmpl in templates:
-                    result += f"ID: {tmpl.id} - {tmpl.name}\n"
-                    if tmpl.description:
-                        result += f"  Description: {tmpl.description}\n"
-                    if tmpl.status:
-                        result += f"  Status: {tmpl.status}\n"
-                    if tmpl.last_job_run:
-                        result += f"  Last Run: {tmpl.last_job_run.isoformat()}\n"
-                    if tmpl.next_job_run:
-                        result += f"  Next Run: {tmpl.next_job_run.isoformat()}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_template_get":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    tmpl = await client.get_workflow_job_template(template_id)
-
-                result = f"Workflow Job Template {template_id}:\n\n"
-                result += f"Name: {tmpl.name}\n"
-                if tmpl.description:
-                    result += f"Description: {tmpl.description}\n"
-                if tmpl.organization:
-                    result += f"Organization: {tmpl.organization}\n"
-                if tmpl.inventory:
-                    result += f"Inventory: {tmpl.inventory}\n"
-                if tmpl.limit:
-                    result += f"Limit: {tmpl.limit}\n"
-                if tmpl.status:
-                    result += f"Status: {tmpl.status}\n"
-                result += f"Survey Enabled: {tmpl.survey_enabled}\n"
-                result += f"Allow Simultaneous: {tmpl.allow_simultaneous}\n"
-                if tmpl.last_job_run:
-                    result += f"Last Run: {tmpl.last_job_run.isoformat()}\n"
-                if tmpl.next_job_run:
-                    result += f"Next Run: {tmpl.next_job_run.isoformat()}\n"
-                result += "\nLaunch Options:\n"
-                result += f"  Ask Variables: {tmpl.ask_variables_on_launch}\n"
-                result += f"  Ask Inventory: {tmpl.ask_inventory_on_launch}\n"
-                result += f"  Ask Limit: {tmpl.ask_limit_on_launch}\n"
-                result += f"  Ask Tags: {tmpl.ask_tags_on_launch}\n"
-                result += f"  Ask Skip Tags: {tmpl.ask_skip_tags_on_launch}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_job_launch":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    tmpl = await client.get_workflow_job_template(template_id)
-                    check_allowlist(env, template_id, tmpl.name)
-
-                    wf_job = await client.launch_workflow_job(
-                        template_id=template_id,
-                        extra_vars=arguments.get("extra_vars"),
-                        limit=arguments.get("limit"),
-                        tags=arguments.get("tags"),
-                        skip_tags=arguments.get("skip_tags"),
-                    )
-
-                logger.info(
-                    "workflow_job_launched",
-                    environment=env.name,
-                    template=tmpl.name,
-                    job_id=wf_job.id,
-                )
-
-                result = "✓ Workflow job launched successfully\n\n"
-                result += f"Workflow Job ID: {wf_job.id}\n"
-                result += f"Name: {wf_job.name}\n"
-                result += f"Status: {wf_job.status.value}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_job_get":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    wf_job = await client.get_workflow_job(job_id)
-
-                result = f"Workflow Job {job_id} Details:\n\n"
-                result += f"Name: {wf_job.name}\n"
-                result += f"Status: {wf_job.status.value}\n"
-                result += f"Failed: {wf_job.failed}\n"
-                if wf_job.workflow_job_template:
-                    result += f"Template ID: {wf_job.workflow_job_template}\n"
-                if wf_job.launch_type:
-                    result += f"Launch Type: {wf_job.launch_type}\n"
-                if wf_job.started:
-                    result += f"Started: {wf_job.started.isoformat()}\n"
-                if wf_job.finished:
-                    result += f"Finished: {wf_job.finished.isoformat()}\n"
-                if wf_job.elapsed:
-                    result += f"Elapsed: {wf_job.elapsed}s\n"
-                if wf_job.limit:
-                    result += f"Limit: {wf_job.limit}\n"
-                if wf_job.job_explanation:
-                    result += f"\nExplanation: {wf_job.job_explanation}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_jobs_list":
-                env, client = get_active_client()
-
-                async with client:
-                    wf_jobs = await client.list_workflow_jobs(
-                        status=arguments.get("status"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                        workflow_template_id=arguments.get("workflow_template_id"),
-                    )
-
-                result = f"Workflow Jobs ({len(wf_jobs)}):\n\n"
-                for wf_job in wf_jobs:
-                    result += f"ID: {wf_job.id} - {wf_job.name}\n"
-                    result += f"  Status: {wf_job.status.value}\n"
-                    if wf_job.launch_type:
-                        result += f"  Launch Type: {wf_job.launch_type}\n"
-                    if wf_job.started:
-                        result += f"  Started: {wf_job.started.isoformat()}\n"
-                    if wf_job.finished:
-                        result += f"  Finished: {wf_job.finished.isoformat()}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_job_cancel":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    await client.cancel_workflow_job(job_id)
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Workflow job {job_id} cancellation requested",
-                    )
-                ]
-
-            elif name == "awx_workflow_job_nodes":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    nodes = await client.get_workflow_job_nodes(
-                        job_id=job_id,
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 100),
-                    )
-
-                result = f"Workflow Job {job_id} Nodes ({len(nodes)}):\n\n"
-                for node in nodes:
-                    # Extract names from summary_fields
-                    sf = node.summary_fields
-                    template_name = sf.get("unified_job_template", {}).get(
-                        "name", "Unknown"
-                    )
-                    job_type = sf.get("unified_job_template", {}).get(
-                        "unified_job_type", "unknown"
-                    )
-                    job_info = sf.get("job", {})
-                    job_status = job_info.get("status", "unknown")
-                    job_failed = job_info.get("failed", False)
-                    job_elapsed = job_info.get("elapsed")
-                    child_job_id = node.job
-
-                    status_icon = (
-                        "✗"
-                        if job_failed
-                        else ("✓" if job_status == "successful" else "●")
-                    )
-                    result += f"{status_icon} Node: {template_name} ({job_type})\n"
-                    if child_job_id:
-                        result += f"  Job ID: {child_job_id} | Status: {job_status}"
-                        if job_elapsed is not None:
-                            result += f" | Elapsed: {job_elapsed}s"
-                        result += "\n"
-                    if node.do_not_run:
-                        result += "  (skipped)\n"
-                    connections = []
-                    if node.success_nodes:
-                        connections.append(f"success -> {node.success_nodes}")
-                    if node.failure_nodes:
-                        connections.append(f"failure -> {node.failure_nodes}")
-                    if node.always_nodes:
-                        connections.append(f"always -> {node.always_nodes}")
-                    if connections:
-                        result += f"  Connections: {', '.join(connections)}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_job_delete":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    await client.rest_client.delete_workflow_job(job_id)
-
-                return [
-                    TextContent(
-                        type="text", text=f"Workflow job {job_id} deleted successfully"
-                    )
-                ]
-
-            elif name == "awx_workflow_job_relaunch":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    wf_job = await client.rest_client.relaunch_workflow_job(job_id)
-
-                result = "Workflow job relaunched successfully\n\n"
-                result += f"New Workflow Job ID: {wf_job.id}\n"
-                result += f"Name: {wf_job.name}\n"
-                result += f"Status: {wf_job.status.value}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_template_nodes":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    nodes = await client.rest_client.get_workflow_job_template_nodes(
-                        template_id,
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 100),
-                    )
-
-                result = f"Workflow Template {template_id} Nodes ({len(nodes)}):\n\n"
-                for node in nodes:
-                    sf = node.get("summary_fields", {})
-                    ujt = sf.get("unified_job_template", {})
-                    template_name = ujt.get("name", "Unknown")
-                    job_type = ujt.get("unified_job_type", "unknown")
-
-                    result += f"Node {node['id']}: {template_name} ({job_type})\n"
-                    connections = []
-                    if node.get("success_nodes"):
-                        connections.append(f"success -> {node['success_nodes']}")
-                    if node.get("failure_nodes"):
-                        connections.append(f"failure -> {node['failure_nodes']}")
-                    if node.get("always_nodes"):
-                        connections.append(f"always -> {node['always_nodes']}")
-                    if connections:
-                        result += f"  Connections: {', '.join(connections)}\n"
-                    if node.get("all_parents_must_converge"):
-                        result += "  All parents must converge: True\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_template_survey":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    survey = await client.rest_client.get_workflow_job_template_survey(
-                        template_id
-                    )
-
-                spec = survey.get("spec", [])
-                if not spec:
-                    result = f"Workflow Template {template_id} has no survey questions configured.\n"
-                else:
-                    result = f"Workflow Template {template_id} Survey ({len(spec)} questions):\n\n"
-                    if survey.get("name"):
-                        result += f"Name: {survey['name']}\n"
-                    if survey.get("description"):
-                        result += f"Description: {survey['description']}\n"
-                    result += "\n"
-                    for q in spec:
-                        required = " (required)" if q.get("required") else ""
-                        result += f"Variable: {q.get('variable')}{required}\n"
-                        result += f"  Question: {q.get('question_name', '')}\n"
-                        result += f"  Type: {q.get('type', 'text')}\n"
-                        if q.get("default"):
-                            result += f"  Default: {q['default']}\n"
-                        if q.get("choices"):
-                            result += f"  Choices: {q['choices']}\n"
-                        result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_template_schedules":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    schedules = (
-                        await client.rest_client.list_workflow_job_template_schedules(
-                            template_id,
-                            page=arguments.get("page", 1),
-                            page_size=arguments.get("page_size", 25),
-                        )
-                    )
-
-                result = (
-                    f"Workflow Template {template_id} Schedules ({len(schedules)}):\n\n"
-                )
-                for s in schedules:
-                    result += f"ID: {s['id']} - {s['name']}\n"
-                    if s.get("description"):
-                        result += f"  Description: {s['description']}\n"
-                    result += f"  Enabled: {s.get('enabled', False)}\n"
-                    result += f"  RRule: {s.get('rrule', 'N/A')}\n"
-                    if s.get("next_run"):
-                        result += f"  Next Run: {s['next_run']}\n"
-                    if s.get("dtstart"):
-                        result += f"  Start: {s['dtstart']}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_template_launch_config":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    config = await client.rest_client.get_workflow_job_template_launch_config(
-                        template_id
-                    )
-
-                result = f"Workflow Template {template_id} Launch Configuration:\n\n"
-                result += f"Can Start Without User Input: {config.get('can_start_without_user_input', False)}\n"
-                result += f"Survey Enabled: {config.get('survey_enabled', False)}\n"
-                result += f"Variables Needed: {config.get('variables_needed_to_start', [])}\n\n"
-
-                result += "Prompt Options:\n"
-                for key in [
-                    "ask_inventory_on_launch",
-                    "ask_limit_on_launch",
-                    "ask_scm_branch_on_launch",
-                    "ask_variables_on_launch",
-                    "ask_labels_on_launch",
-                    "ask_tags_on_launch",
-                    "ask_skip_tags_on_launch",
-                ]:
-                    if config.get(key):
-                        result += f"  {key}: True\n"
-
-                defaults = config.get("defaults", {})
-                if defaults:
-                    result += "\nDefaults:\n"
-                    for key, value in defaults.items():
-                        if value is not None:
-                            result += f"  {key}: {value}\n"
-
-                missing = config.get("node_templates_missing", [])
-                if missing:
-                    result += f"\nMissing Node Templates: {missing}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            # ── Local Ansible Development Tool Handlers ──
-
             elif name == "create_playbook":
                 pb_result = playbook_manager.create_playbook(
                     name=arguments["name"],

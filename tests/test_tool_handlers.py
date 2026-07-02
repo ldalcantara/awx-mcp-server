@@ -477,6 +477,28 @@ async def test_job_launch(invoke):
     client.launch_job.assert_awaited_once()
 
 
+# --- Drift guard ----------------------------------------------------------
+
+
+async def test_every_declared_tool_is_dispatchable(invoke):
+    """Every tool advertised by list_tools must have a dispatch path (registry
+    or fall-through) — i.e. invoking it must never return 'Unknown tool'. This
+    guards against schema/handler drift in the (still partly monolithic)
+    call_tool. Required args / missing client methods produce other errors,
+    which is fine; we only assert the tool is *known*."""
+    server = create_mcp_server()
+    listing = await process_mcp_message(
+        server, {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}}, "t"
+    )
+    names = [t["name"] for t in listing["result"]["tools"]]
+    assert len(names) >= 70  # sanity: the full surface is present
+
+    empty_client = FakeClient()
+    for name in names:
+        text = await invoke(name, {}, empty_client)
+        assert "Unknown tool" not in text, f"{name} is declared but not dispatched"
+
+
 # --- Error / validation paths --------------------------------------------
 
 

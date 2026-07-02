@@ -130,3 +130,34 @@ def test_analyze_no_failed_events():
 
     assert analysis.category == FailureCategory.UNKNOWN
     assert len(analysis.suggested_fixes) > 0
+
+
+def test_redact_sensitive_masks_secret_keys():
+    """Keys carrying credentials must be masked before logging."""
+    from awx_mcp_server.utils import redact_sensitive
+
+    args = {
+        "template_id": 7,
+        "limit": "webservers",
+        "extra_vars": {"db_password": "hunter2"},
+        "inputs": {"password": "hunter2"},
+        "awx_token": "abc123",
+    }
+    red = redact_sensitive(args)
+    assert red["template_id"] == 7
+    assert red["limit"] == "webservers"
+    assert red["extra_vars"] == "[REDACTED]"
+    assert red["inputs"] == "[REDACTED]"
+    assert red["awx_token"] == "[REDACTED]"
+    # Original is untouched (it is still needed by the tool handler).
+    assert args["extra_vars"] == {"db_password": "hunter2"}
+
+
+def test_redact_sensitive_walks_containers_and_passes_scalars():
+    from awx_mcp_server.utils import redact_sensitive
+
+    assert redact_sensitive([{"token": "t", "name": "n"}]) == [
+        {"token": "[REDACTED]", "name": "n"}
+    ]
+    assert redact_sensitive("plain") == "plain"
+    assert redact_sensitive(None) is None

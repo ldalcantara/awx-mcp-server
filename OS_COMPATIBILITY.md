@@ -190,7 +190,7 @@ docker run -it --rm \
   -e AWX_BASE_URL=https://your-awx.com \
   -e AWX_TOKEN=your-token \
   -p 8000:8000 \
-  ldalcantara/awx-mcp-server:latest
+  surgexlabs/awx-mcp-server:latest
 ```
 
 ## 📋 Platform-Specific Notes

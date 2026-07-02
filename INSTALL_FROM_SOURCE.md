@@ -16,7 +16,7 @@ This guide shows how to install, customize, and run the AWX MCP Server directly 
 
 **Why Fork?** So you can make customizations and push changes to your own repository.
 
-1. Go to https://github.com/ldalcantara/awx-mcp-server
+1. Go to https://github.com/SurgeX-Labs/awx-mcp-server
 2. Click **"Fork"** button (top right)
 3. This creates a copy under your GitHub account: `https://github.com/YOUR-USERNAME/awx-mcp-server`
 
@@ -30,7 +30,7 @@ cd awx-mcp-server
 
 **Or clone the original** (read-only access):
 ```bash
-git clone https://github.com/ldalcantara/awx-mcp-server.git
+git clone https://github.com/SurgeX-Labs/awx-mcp-server.git
 cd awx-mcp-server
 ```
 
@@ -292,7 +292,7 @@ pip install -e .
 
 ```bash
 # Add upstream remote (original repo)
-git remote add upstream https://github.com/ldalcantara/awx-mcp-server.git
+git remote add upstream https://github.com/SurgeX-Labs/awx-mcp-server.git
 
 # Fetch updates from upstream
 git fetch upstream
@@ -540,7 +540,7 @@ If contributing back to upstream:
 - Go to your fork on GitHub
 - Click "New Pull Request"
 - Select your feature branch
-- Submit PR to `ldalcantara/awx-mcp-server`
+- Submit PR to `SurgeX-Labs/awx-mcp-server`
 
 ---
 
@@ -661,8 +661,8 @@ export PYTHONPATH=/path/to/awx-mcp-server/awx-mcp-python/server/src:$PYTHONPATH
 
 ## 📚 Additional Resources
 
-- **Original Repo**: https://github.com/ldalcantara/awx-mcp-server
-- **Issues**: https://github.com/ldalcantara/awx-mcp-server/issues
+- **Original Repo**: https://github.com/SurgeX-Labs/awx-mcp-server
+- **Issues**: https://github.com/SurgeX-Labs/awx-mcp-server/issues
 - **Contributing Guide**: See CONTRIBUTING.md
 - **MCP Documentation**: https://modelcontextprotocol.io/
 
@@ -703,7 +703,7 @@ python -m awx_mcp_server.cli start --host 0.0.0.0 --port 8000
 
 **Update from upstream**:
 ```bash
-git remote add upstream https://github.com/ldalcantara/awx-mcp-server.git
+git remote add upstream https://github.com/SurgeX-Labs/awx-mcp-server.git
 git fetch upstream
 git merge upstream/main
 ```

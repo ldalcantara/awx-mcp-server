@@ -254,9 +254,9 @@ show recent failed jobs
 
 ## 🛠️ Getting Help
 
-- **Issues:** https://github.com/ldalcantara/awx-mcp-server/issues
-- **Discussions:** https://github.com/ldalcantara/awx-mcp-server/discussions
-- **Email:** ldalcantara@gmail.com
+- **Issues:** https://github.com/SurgeX-Labs/awx-mcp-server/issues
+- **Discussions:** https://github.com/SurgeX-Labs/awx-mcp-server/discussions
+- **Email:** support@surgexlabs.com
 
 ---
 

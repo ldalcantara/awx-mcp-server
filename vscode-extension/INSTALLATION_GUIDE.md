@@ -43,7 +43,7 @@ Changed error handling from aggressive warnings to gentle informational messages
 **Solution Steps**:
 1. **Uninstall old version** (if exists):
    ```powershell
-   code --uninstall-extension ldalcantara.awx-mcp-extension
+   code --uninstall-extension surgexlabs.awx-mcp-extension
    ```
 
 2. **Rebuild VSIX** (with latest fixes):
@@ -68,7 +68,7 @@ Changed error handling from aggressive warnings to gentle informational messages
 File: awx-mcp-extension-1.0.0.vsix
 Size: 11.88 MB
 Files: 609
-Publisher: ldalcantara
+Publisher: SurgeXlabs
 Version: 1.0.0
 ```
 
@@ -82,9 +82,9 @@ Version: 1.0.0
 
 ### 1. Verify Extension is Active
 ```powershell
-code --list-extensions | Select-String "ldalcantara"
+code --list-extensions | Select-String "surgexlabs"
 ```
-Expected output: `ldalcantara.awx-mcp-extension`
+Expected output: `surgexlabs.awx-mcp-extension`
 
 ### 2. Check Activity Bar Icon
 1. Look at the left sidebar (activity bar)
@@ -187,7 +187,7 @@ Ctrl+Shift+P → "AWX MCP: Setup Dependencies"
 cd "c:\Users\pirab\OneDrive\Documents\Lab-Challenge\AWX-MCP\awx-mcp-python\vscode-extension"
 
 # Uninstall old version
-code --uninstall-extension ldalcantara.awx-mcp-extension
+code --uninstall-extension surgexlabs.awx-mcp-extension
 
 # Wait 5 seconds
 Start-Sleep -Seconds 5
@@ -217,7 +217,7 @@ code --install-extension awx-mcp-extension-1.0.0.vsix --force
 Start-Sleep -Seconds 15
 
 # Verify installation
-code --list-extensions | Select-String "ldalcantara"
+code --list-extensions | Select-String "surgexlabs"
 ```
 
 ### Step 4: First Launch
@@ -321,8 +321,8 @@ For advanced debugging:
 
 ## Contact & Support
 
-- **GitHub Issues**: https://github.com/ldalcantara/awx-mcp-server/issues
-- **Marketplace**: https://marketplace.visualstudio.com/items?itemName=ldalcantara.awx-mcp-extension
+- **GitHub Issues**: https://github.com/SurgeX-Labs/awx-mcp-server/issues
+- **Marketplace**: https://marketplace.visualstudio.com/items?itemName=SurgeXlabs.awx-mcp-extension
 - **Documentation**: See README.md and TEST_GUIDE.md
 
 ---

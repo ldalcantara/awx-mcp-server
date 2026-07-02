@@ -108,7 +108,7 @@ For remote server deployments, configure platform types in environment-specific 
 version: '3.8'
 services:
   awx-mcp-server:
-    image: ldalcantara/awx-mcp-server:latest
+    image: surgexlabs/awx-mcp-server:latest
     environment:
       - AWX_BASE_URL=https://aap.company.com
       - AWX_PLATFORM=aap
@@ -128,7 +128,7 @@ spec:
     spec:
       containers:
       - name: awx-mcp-server
-        image: ldalcantara/awx-mcp-server:latest
+        image: surgexlabs/awx-mcp-server:latest
         env:
         - name: AWX_BASE_URL
           value: "https://aap-controller.company.com"

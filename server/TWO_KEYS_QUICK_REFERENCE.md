@@ -29,7 +29,7 @@
 
 ### How to Get Key #1:
 
-1. Login to https://aap.dev.example.com
+1. Login to https://aap.devfg.surgexlabs.com
 2. Navigate: Users → Your Profile → Tokens
 3. Click "Create Token"
 4. Copy token
@@ -67,7 +67,7 @@ echo 'export AAP_TOKEN="abc123xyz456..."' >> ~/.bashrc
 **Ask your MCP server admin to run:**
 
 ```bash
-curl -X POST https://awx-mcp-server.example.com/api/keys \
+curl -X POST https://awx-mcp-server.surgexlabs.com/api/keys \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -103,12 +103,12 @@ echo 'export MCP_API_KEY="awx_mcp_def789ghi012..."' >> ~/.bashrc
 ```json
 {
   "github.copilot.chat.mcpServers": {
-    "example-aap-dev": {
-      "url": "https://awx-mcp-server.example.com/mcp",
+    "surgexlabs-aap-dev": {
+      "url": "https://awx-mcp-server.surgexlabs.com/mcp",
       "transport": "http",
       "headers": {
         "X-API-Key": "${env:MCP_API_KEY}",
-        "X-AWX-Base-URL": "https://aap.dev.example.com",
+        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
         "X-AWX-Platform": "aap"
       },
       "env": {
@@ -129,12 +129,12 @@ echo 'export MCP_API_KEY="awx_mcp_def789ghi012..."' >> ~/.bashrc
 ```json
 {
   "github.copilot.chat.mcpServers": {
-    "example-aap-dev": {
-      "url": "https://awx-mcp-server.example.com/mcp",
+    "surgexlabs-aap-dev": {
+      "url": "https://awx-mcp-server.surgexlabs.com/mcp",
       "transport": "http",
       "headers": {
         "X-API-Key": "awx_mcp_def789ghi012...",
-        "X-AWX-Base-URL": "https://aap.dev.example.com",
+        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {
@@ -155,11 +155,11 @@ echo 'export MCP_API_KEY="awx_mcp_def789ghi012..."' >> ~/.bashrc
 ```json
 {
   "github.copilot.chat.mcpServers": {
-    "example-aap-dev": {
+    "surgexlabs-aap-dev": {
       "url": "http://localhost:8000/mcp",
       "transport": "http",
       "headers": {
-        "X-AWX-Base-URL": "https://aap.dev.example.com",
+        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {
@@ -195,7 +195,7 @@ Do you have a remote MCP server?
 - [ ] VS Code installed
 - [ ] GitHub Copilot extension installed
 - [ ] Active GitHub Copilot subscription
-- [ ] Access to AAP instance (https://aap.dev.example.com)
+- [ ] Access to AAP instance (https://aap.devfg.surgexlabs.com)
 - [ ] MCP server URL provided by admin
 
 ### ✅ Get Key #1 (AAP Token)
@@ -217,7 +217,7 @@ Do you have a remote MCP server?
 
 ### ✅ Test Connection
 - [ ] Open GitHub Copilot Chat
-- [ ] Try: `@example-aap-dev List job templates`
+- [ ] Try: `@surgexlabs-aap-dev List job templates`
 - [ ] Verify you see results
 
 ---
@@ -242,19 +242,19 @@ echo $MCP_API_KEY          # Should show: awx_mcp_def789ghi012...
 
 ```bash
 # Test health endpoint
-curl https://awx-mcp-server.example.com/health
+curl https://awx-mcp-server.surgexlabs.com/health
 
 # Test with your MCP API key
-curl https://awx-mcp-server.example.com/api/v1/environments \
+curl https://awx-mcp-server.surgexlabs.com/api/v1/environments \
   -H "X-API-Key: awx_mcp_def789ghi012..."
 ```
 
 ### Test 3: Test in Copilot Chat
 
 ```
-@example-aap-dev List all job templates
-@example-aap-dev Show AAP version
-@example-aap-dev What environments are configured?
+@surgexlabs-aap-dev List all job templates
+@surgexlabs-aap-dev Show AAP version
+@surgexlabs-aap-dev What environments are configured?
 ```
 
 ---
@@ -279,7 +279,7 @@ curl https://awx-mcp-server.example.com/api/v1/environments \
 **Fix**:
 1. Test AAP token:
    ```bash
-   curl https://aap.dev.example.com/api/v2/me/ \
+   curl https://aap.devfg.surgexlabs.com/api/v2/me/ \
      -H "Authorization: Bearer $AAP_TOKEN"
    ```
 2. If invalid, get new token from AAP UI
@@ -312,9 +312,9 @@ curl https://awx-mcp-server.example.com/api/v1/environments \
 
 ## Summary
 
-**For AAP Remote Setup, you need:**
+**For surgexlabs AAP Remote Setup, you need:**
 
-1. **AAP Token** from https://aap.dev.example.com (for AAP authentication)
+1. **AAP Token** from https://aap.devfg.surgexlabs.com (for AAP authentication)
 2. **MCP API Key** from your MCP server admin (for MCP server access)
 
 **Both saved as environment variables:**

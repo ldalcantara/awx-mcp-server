@@ -23,26 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hoisted per-request `get_logger()`/`import json` calls in
   `rest_client.py` to module level (they ran on every HTTP request).
 
-### Fixed
-- `/mcp` no longer crashes with an `UnboundLocalError` on a malformed JSON
-  body — it now returns a proper JSON-RPC parse error (`-32700`).
-- `/`, `/health`, the FastAPI app metadata, and the MCP `initialize`
-  handshake now report the real package version (previously stale
-  hardcoded `1.0.0` / `1.1.6` strings).
-- The `awx_mcp_tool_calls_total{status}` metric now records the actual
-  JSON-RPC outcome instead of unconditionally counting `success` before
-  the tool ran.
-
-### Security
-- Tool-call arguments are redacted before logging (new
-  `utils.redact_sensitive`): values under keys matching password / token /
-  secret / credential / `extra_vars` / `inputs` etc. are masked, so
-  playbook secrets and AWX credential inputs no longer land in the logs.
-- Removed all SurgeX-Labs branding and hostnames from the repository:
-  package metadata, MCP registry names, Docker image names and the VS Code
-  publisher/extension ID now use `ldalcantara`; documentation examples use
-  neutral `example.com` placeholders.
-
 ## [1.3.0] - 2026-04-24
 
 ### Added
@@ -135,4 +115,4 @@ _Contributed by Connor Griffin (`connor-griffin5`)._
 
 ---
 
-For more details, see the [GitHub repository](https://github.com/ldalcantara/awx-mcp-server).
+For more details, see the [GitHub repository](https://github.com/SurgeX-Labs/awx-mcp-server).

@@ -271,7 +271,7 @@ spec:
     spec:
       containers:
       - name: awx-mcp-server
-        image: ldalcantara/awx-mcp-server:latest
+        image: surgexlabs/awx-mcp-server:latest
         resources:
           requests:
             memory: "128Mi"

@@ -15,7 +15,6 @@ from mcp.server import Server
 from pydantic import BaseModel
 
 from prometheus_client import CONTENT_TYPE_LATEST
-from awx_mcp_server import __version__
 from awx_mcp_server.monitoring import (
     monitoring_service,
     RequestTimer,
@@ -27,7 +26,7 @@ from awx_mcp_server.request_context import (
     set_awx_override,
     reset_awx_override,
 )
-from awx_mcp_server.utils import configure_logging, get_logger, redact_sensitive
+from awx_mcp_server.utils import configure_logging, get_logger
 
 logger = get_logger(__name__)
 
@@ -202,7 +201,7 @@ async def process_mcp_message(
                 },
                 "serverInfo": {
                     "name": "awx-mcp-server",
-                    "version": __version__,
+                    "version": "1.1.6",
                 },
             }
 
@@ -223,12 +222,8 @@ async def process_mcp_message(
             tool_name = params.get("name")
             tool_args = params.get("arguments", {})
 
-            # Redact credential inputs / extra_vars etc. before logging.
             logger.info(
-                "tool_call",
-                tenant_id=tenant_id,
-                tool=tool_name,
-                args=redact_sensitive(tool_args),
+                "tool_call", tenant_id=tenant_id, tool=tool_name, args=tool_args
             )
 
             # Create proper MCP request using class type as key
@@ -325,7 +320,7 @@ def create_app(mcp_server: Server) -> FastAPI:
     app = FastAPI(
         title="AWX MCP Server",
         description="Production-ready MCP server for AWX automation with monitoring",
-        version=__version__,
+        version="1.0.0",
         docs_url="/docs" if _docs_enabled else None,
         redoc_url="/redoc" if _docs_enabled else None,
     )
@@ -384,7 +379,7 @@ def create_app(mcp_server: Server) -> FastAPI:
         """Root endpoint."""
         return {
             "service": "AWX MCP Server",
-            "version": __version__,
+            "version": "1.0.0",
             "status": "running",
             "transport": "http",
             "features": ["monitoring", "multi-tenant", "authentication"],
@@ -405,7 +400,7 @@ def create_app(mcp_server: Server) -> FastAPI:
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
             "service": "awx-mcp-server",
-            "version": __version__,
+            "version": "1.1.6",
         }
 
     @app.get("/prometheus-metrics")
@@ -492,26 +487,9 @@ def create_app(mcp_server: Server) -> FastAPI:
         """
         tenant_id = tenant_info["tenant_id"]
 
-        # Parse the body first, with its own error path: ``message`` must be
-        # bound before the generic handler below references it, and malformed
-        # JSON is a protocol-level parse error (-32700), not a 500.
-        message: dict[str, Any] = {}
         try:
+            # Get JSON-RPC message
             message = await request.json()
-        except Exception:
-            return JSONResponse(
-                status_code=200,  # JSON-RPC errors use 200 with error in body
-                content={
-                    "jsonrpc": "2.0",
-                    "id": None,
-                    "error": {
-                        "code": -32700,
-                        "message": "Parse error: request body is not valid JSON",
-                    },
-                },
-            )
-
-        try:
             logger.info(
                 "mcp_message_received",
                 tenant_id=tenant_id,
@@ -532,12 +510,11 @@ def create_app(mcp_server: Server) -> FastAPI:
                 # The mcp_server handles: initialize, tools/list, tools/call, resources/list, etc.
                 result = await process_mcp_message(mcp_server, message, tenant_id)
 
-                # Record metrics only after the outcome is known, so the
-                # success/error split in Prometheus reflects reality.
+                # Record metrics
                 if message.get("method") == "tools/call":
                     tool_name = message.get("params", {}).get("name")
                     monitoring_service.record_tool_call(
-                        tenant_id, tool_name, success="error" not in result
+                        tenant_id, tool_name, success=True
                     )
 
                 return result

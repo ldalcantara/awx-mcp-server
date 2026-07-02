@@ -137,7 +137,7 @@ spec:
     spec:
       containers:
       - name: awx-mcp-server
-        image: ldalcantara/awx-mcp-server:latest
+        image: surgexlabs/awx-mcp-server:latest
         ports:
         - containerPort: 8000
         envFrom:
@@ -289,7 +289,7 @@ aws ecs create-service \
 az container create \
   --resource-group awx-mcp-rg \
   --name awx-mcp-server \
-  --image ldalcantara/awx-mcp-server:latest \
+  --image surgexlabs/awx-mcp-server:latest \
   --dns-name-label awx-mcp \
   --ports 8000 \
   --environment-variables \

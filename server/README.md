@@ -1,6 +1,6 @@
 # AWX MCP Server
 
-<!--mcp-name: io.github.ldalcantara/awx-mcp-server-->
+<!--mcp-name: io.github.SurgeX-Labs/awx-mcp-server-->
 
 [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Server-0098FF?style=for-the-badge&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=awx-mcp&inputs=%5B%7B%22id%22%3A%22awx-url%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22Enter%20your%20AWX%20URL%22%7D%2C%7B%22id%22%3A%22awx-username%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22Enter%20your%20AWX%20username%22%7D%2C%7B%22id%22%3A%22awx-password%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22Enter%20your%20AWX%20password%20or%20token%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22command%22%3A%22python%22%2C%22args%22%3A%5B%22-m%22%2C%22awx_mcp_server%22%5D%2C%22env%22%3A%7B%22AWX_URL%22%3A%22%24%7Binput%3Aawx-url%7D%22%2C%22AWX_USERNAME%22%3A%22%24%7Binput%3Aawx-username%7D%22%2C%22AWX_PASSWORD%22%3A%22%24%7Binput%3Aawx-password%7D%22%7D%7D)
 [![PyPI](https://img.shields.io/pypi/v/awx-mcp-server?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/awx-mcp-server/)
@@ -224,7 +224,7 @@ With the server configured, you can use natural language like:
 - **[GitHub Installation](GITHUB_INSTALLATION.md)** - Install directly from GitHub
 
 ### Resources
-- **GitHub Repository**: https://github.com/ldalcantara/awx-mcp-server
+- **GitHub Repository**: https://github.com/SurgeX-Labs/awx-mcp-server
 - **PyPI Package**: https://pypi.org/project/awx-mcp-server/
 - **MCP Protocol**: https://modelcontextprotocol.io/
 
@@ -234,5 +234,5 @@ Apache License 2.0
 
 ## Support
 
-- Issues: https://github.com/ldalcantara/awx-mcp-server/issues
-- Discussions: https://github.com/ldalcantara/awx-mcp-server/discussions
+- Issues: https://github.com/SurgeX-Labs/awx-mcp-server/issues
+- Discussions: https://github.com/SurgeX-Labs/awx-mcp-server/discussions

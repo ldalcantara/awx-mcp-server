@@ -1,7 +1,6 @@
 """Utility functions for parsing and analysis."""
 
 import re
-from typing import Any
 
 from awx_mcp_server.domain import FailureAnalysis, FailureCategory, JobEvent
 
@@ -218,42 +217,6 @@ def _generate_suggestions(
         )
 
     return suggestions
-
-
-# Keys whose values must never reach the logs. Matched as substrings of the
-# lowercased key, so e.g. "awx_token" and "extra_vars" are both caught.
-_SENSITIVE_KEY_PARTS = (
-    "password",
-    "token",
-    "secret",
-    "api_key",
-    "apikey",
-    "credential",
-    "authorization",
-    "extra_vars",  # frequently carries passwords/keys for playbooks
-    "inputs",  # AWX credential inputs
-)
-
-
-def redact_sensitive(data: Any) -> Any:
-    """Return a log-safe copy of ``data``.
-
-    Values under keys that look sensitive (password/token/extra_vars/...) are
-    replaced with ``[REDACTED]``; containers are walked recursively. Non-dict,
-    non-list values pass through unchanged.
-    """
-    if isinstance(data, dict):
-        return {
-            key: (
-                "[REDACTED]"
-                if any(part in key.lower() for part in _SENSITIVE_KEY_PARTS)
-                else redact_sensitive(value)
-            )
-            for key, value in data.items()
-        }
-    if isinstance(data, list):
-        return [redact_sensitive(item) for item in data]
-    return data
 
 
 def sanitize_secret(text: str, secrets: list[str]) -> str:

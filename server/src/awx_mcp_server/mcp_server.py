@@ -27,12 +27,7 @@ from awx_mcp_server.domain import (
     NoActiveEnvironmentError,
 )
 from awx_mcp_server.storage import ConfigManager, CredentialStore
-from awx_mcp_server.utils import (
-    analyze_job_failure,
-    configure_logging,
-    get_logger,
-    redact_sensitive,
-)
+from awx_mcp_server.utils import analyze_job_failure, configure_logging, get_logger
 from awx_mcp_server import playbook_manager, project_registry
 
 # Initialize logging
@@ -2137,8 +2132,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
     async def call_tool(name: str, arguments: Any) -> list[TextContent]:
         """Handle tool calls."""
         try:
-            # Redact credential inputs / extra_vars etc. before logging.
-            logger.info("tool_call", tool=name, arguments=redact_sensitive(arguments))
+            logger.info("tool_call", tool=name, arguments=arguments)
             if name in _HANDLERS:
                 return await _HANDLERS[name](arguments)
 

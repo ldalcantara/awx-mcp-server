@@ -82,7 +82,7 @@
 ```
 ┌──────────────────────────────────────┐
 │ VS Code Extension                    │
-│ ldalcantara.awx-mcp-extension         │
+│ surgexlabs.awx-mcp-extension         │
 ├──────────────────────────────────────┤
 │ • extension.ts (entry point)         │
 │ • mcpServerManager.ts (spawns Python)│

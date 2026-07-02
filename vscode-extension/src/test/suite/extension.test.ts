@@ -11,11 +11,11 @@ suite('AWX MCP Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
 
     test('Extension should be present', () => {
-        assert.ok(vscode.extensions.getExtension('ldalcantara.awx-mcp-extension'));
+        assert.ok(vscode.extensions.getExtension('SurgeXlabs.awx-mcp-extension'));
     });
 
     test('Extension should activate', async () => {
-        const ext = vscode.extensions.getExtension('ldalcantara.awx-mcp-extension');
+        const ext = vscode.extensions.getExtension('SurgeXlabs.awx-mcp-extension');
         assert.ok(ext);
         if (ext) {
             await ext.activate();

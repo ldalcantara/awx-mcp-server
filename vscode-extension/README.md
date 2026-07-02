@@ -353,15 +353,15 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 ## 🆘 Support
 
-- **GitHub Issues:** [Report bugs or request features](https://github.com/ldalcantara/awx-mcp-server/issues)
+- **GitHub Issues:** [Report bugs or request features](https://github.com/SurgeX-Labs/awx-mcp-server/issues)
 - **MCP Server (PyPI):** `pip install awx-mcp-server`
-- **Extension (Marketplace):** `ldalcantara.awx-mcp-extension`
+- **Extension (Marketplace):** `surgexlabs.awx-mcp-extension`
 - **Documentation:** See links above
 
 ## 🔗 Quick Links
 
-- **Marketplace:** [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=ldalcantara.awx-mcp-extension)
-- **GitHub:** [Source Repository](https://github.com/ldalcantara/awx-mcp-server)
+- **Marketplace:** [VS Code Extension](https://marketplace.visualstudio.com/items?itemName=surgexlabs.awx-mcp-extension)
+- **GitHub:** [Source Repository](https://github.com/SurgeX-Labs/awx-mcp-server)
 - **MCP Spec:** [Model Context Protocol](https://modelcontextprotocol.io)
 - **AWX Docs:** [Ansible Automation Platform](https://docs.ansible.com/automation-controller/)
 

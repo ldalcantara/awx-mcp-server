@@ -298,8 +298,8 @@ Then reload your MCP client.
 ## 📖 Additional Resources
 
 - **Full Documentation:** [README.md](README.md)
-- **GitHub Repository:** https://github.com/ldalcantara/awx-mcp-server
-- **Issues & Support:** https://github.com/ldalcantara/awx-mcp-server/issues
+- **GitHub Repository:** https://github.com/SurgeX-Labs/awx-mcp-server
+- **Issues & Support:** https://github.com/SurgeX-Labs/awx-mcp-server/issues
 - **MCP Specification:** https://modelcontextprotocol.io
 - **AWX API Docs:** https://docs.ansible.com/automation-controller/
 
@@ -312,7 +312,7 @@ For additional UI features (sidebar views, tree providers, configuration webview
 ```
 Ctrl+Shift+P → "Extensions: Install Extensions"
 Search: "AWX MCP Extension"
-Publisher: ldalcantara
+Publisher: SurgeXlabs
 ```
 
 **Note:** Extension is **optional**. The MCP server works perfectly without it!

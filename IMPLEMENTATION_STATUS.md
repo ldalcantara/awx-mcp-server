@@ -334,10 +334,10 @@ Client (No AWX Credentials)
 
 ## 📞 Support
 
-- **Issues:** https://github.com/SurgeX-Labs/awx-mcp-server/issues
-- **Discussions:** https://github.com/SurgeX-Labs/awx-mcp-server/discussions
+- **Issues:** https://github.com/ldalcantara/awx-mcp-server/issues
+- **Discussions:** https://github.com/ldalcantara/awx-mcp-server/discussions
 - **Label for Vault:** `enhancement`, `vault-integration`
-- **Email:** support@surgexlabs.com
+- **Email:** ldalcantara@gmail.com
 
 ---
 

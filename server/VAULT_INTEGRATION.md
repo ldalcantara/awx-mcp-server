@@ -428,6 +428,6 @@ To contribute to vault integration:
 
 For questions about vault integration:
 
-- Open an issue: https://github.com/SurgeX-Labs/awx-mcp-server/issues
+- Open an issue: https://github.com/ldalcantara/awx-mcp-server/issues
 - Label: `enhancement`, `vault-integration`
-- Email: support@surgexlabs.com
+- Email: ldalcantara@gmail.com

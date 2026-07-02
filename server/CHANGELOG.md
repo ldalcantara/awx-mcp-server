@@ -115,4 +115,4 @@ _Contributed by Connor Griffin (`connor-griffin5`)._
 
 ---
 
-For more details, see the [GitHub repository](https://github.com/SurgeX-Labs/awx-mcp-server).
+For more details, see the [GitHub repository](https://github.com/ldalcantara/awx-mcp-server).

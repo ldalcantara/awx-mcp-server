@@ -14,6 +14,7 @@ from tenacity import (
 )
 
 from awx_mcp_server.clients.base import AWXClient
+from awx_mcp_server.utils import get_logger
 from awx_mcp_server.domain import (
     AWXAuthenticationError,
     AWXClientError,
@@ -29,6 +30,12 @@ from awx_mcp_server.domain import (
     WorkflowJobNode,
     WorkflowJobTemplate,
 )
+
+logger = get_logger(__name__)
+
+# AWX caps list page_size at 200; full listings request it so collecting all
+# pages costs ~5 round-trips instead of ~40 at the 25-item default.
+_MAX_PAGE_SIZE = 200
 
 
 class RestAWXClient(AWXClient):
@@ -122,10 +129,6 @@ class RestAWXClient(AWXClient):
             AWXConnectionError: Connection failed
             AWXClientError: Other client errors
         """
-        from awx_mcp_server.utils import get_logger
-
-        logger = get_logger(__name__)
-
         try:
             response = await self.client.request(method, endpoint, **kwargs)
 
@@ -182,8 +185,6 @@ class RestAWXClient(AWXClient):
         ``max_items`` (a guard against unbounded fetches on very large lists),
         and logs a warning if that cap is hit rather than truncating silently.
         """
-        from awx_mcp_server.utils import get_logger
-
         items: list[dict[str, Any]] = list(data.get("results", []))
         next_url = data.get("next")
         while next_url and len(items) < max_items:
@@ -191,10 +192,30 @@ class RestAWXClient(AWXClient):
             items.extend(data.get("results", []))
             next_url = data.get("next")
         if next_url:
-            get_logger(__name__).warning(
+            logger.warning(
                 "list result truncated at %d items; more pages remain", max_items
             )
         return items[:max_items]
+
+    async def _get_all(
+        self,
+        endpoint: str,
+        params: Optional[dict[str, Any]] = None,
+        max_items: int = 1000,
+    ) -> list[dict[str, Any]]:
+        """GET a paginated list endpoint and collect every page.
+
+        When the listing starts at page 1 (the default), the request asks for
+        the server's maximum page size so a full listing takes ~5 round-trips
+        instead of ~40 at the 25-item default. An explicit ``page`` > 1 keeps
+        the caller's ``page_size``, since changing it would shift page offsets.
+        """
+        params = dict(params or {})
+        if params.get("page", 1) in (None, 1):
+            params["page"] = 1
+            params["page_size"] = min(_MAX_PAGE_SIZE, max_items)
+        data = await self._request("GET", endpoint, params=params)
+        return await self._all_results(data, max_items=max_items)
 
     async def test_connection(self) -> bool:
         """Test connection to AWX."""
@@ -236,8 +257,7 @@ class RestAWXClient(AWXClient):
         if name_filter:
             params["name__icontains"] = name_filter
 
-        data = await self._request("GET", "/api/v2/organizations/", params=params)
-        return await self._all_results(data)
+        return await self._get_all("/api/v2/organizations/", params)
 
     async def get_organization(self, org_id: int) -> dict[str, Any]:
         """Get organization by ID."""
@@ -250,8 +270,7 @@ class RestAWXClient(AWXClient):
     ) -> list[dict[str, Any]]:
         """List credential types."""
         params = {"page": page, "page_size": page_size}
-        data = await self._request("GET", "/api/v2/credential_types/", params=params)
-        return await self._all_results(data)
+        return await self._get_all("/api/v2/credential_types/", params)
 
     async def get_credential_type(self, cred_type_id: int) -> dict[str, Any]:
         """Get credential type by ID."""
@@ -265,8 +284,7 @@ class RestAWXClient(AWXClient):
         if name_filter:
             params["name__icontains"] = name_filter
 
-        data = await self._request("GET", "/api/v2/credentials/", params=params)
-        return await self._all_results(data)
+        return await self._get_all("/api/v2/credentials/", params)
 
     async def get_credential(self, cred_id: int) -> dict[str, Any]:
         """Get credential by ID."""
@@ -304,10 +322,7 @@ class RestAWXClient(AWXClient):
         if name_filter:
             params["name__icontains"] = name_filter
 
-        data = await self._request(
-            "GET", "/api/v2/notification_templates/", params=params
-        )
-        return await self._all_results(data)
+        return await self._get_all("/api/v2/notification_templates/", params)
 
     async def get_notification_template(self, template_id: int) -> dict[str, Any]:
         """Get notification template by ID."""
@@ -324,11 +339,9 @@ class RestAWXClient(AWXClient):
             template_id: Job template ID
             event: One of 'started', 'success', 'error'
         """
-        data = await self._request(
-            "GET",
-            f"/api/v2/job_templates/{template_id}/notification_templates_{event}/",
+        return await self._get_all(
+            f"/api/v2/job_templates/{template_id}/notification_templates_{event}/"
         )
-        return await self._all_results(data)
 
     async def associate_job_template_notification(
         self, template_id: int, notification_template_id: int, event: str
@@ -424,14 +437,10 @@ class RestAWXClient(AWXClient):
         if status:
             params["status"] = status
         if notification_template_id:
-            data = await self._request(
-                "GET",
-                f"/api/v2/notification_templates/{notification_template_id}/notifications/",
-                params=params,
-            )
+            endpoint = f"/api/v2/notification_templates/{notification_template_id}/notifications/"
         else:
-            data = await self._request("GET", "/api/v2/notifications/", params=params)
-        return await self._all_results(data)
+            endpoint = "/api/v2/notifications/"
+        return await self._get_all(endpoint, params)
 
     # Workflow Job Template Notification Associations
 
@@ -439,11 +448,9 @@ class RestAWXClient(AWXClient):
         self, template_id: int, event: str
     ) -> list[dict[str, Any]]:
         """List notification templates associated with a workflow job template for a given event."""
-        data = await self._request(
-            "GET",
-            f"/api/v2/workflow_job_templates/{template_id}/notification_templates_{event}/",
+        return await self._get_all(
+            f"/api/v2/workflow_job_templates/{template_id}/notification_templates_{event}/"
         )
-        return await self._all_results(data)
 
     async def associate_workflow_template_notification(
         self, template_id: int, notification_template_id: int, event: str
@@ -475,10 +482,10 @@ class RestAWXClient(AWXClient):
         if name_filter:
             params["name__icontains"] = name_filter
 
-        data = await self._request("GET", "/api/v2/job_templates/", params=params)
+        items = await self._get_all("/api/v2/job_templates/", params)
 
         templates = []
-        for item in await self._all_results(data):
+        for item in items:
             templates.append(
                 JobTemplate(
                     id=item["id"],
@@ -573,7 +580,7 @@ class RestAWXClient(AWXClient):
         if name_filter:
             params["name__icontains"] = name_filter
 
-        data = await self._request("GET", "/api/v2/projects/", params=params)
+        items = await self._get_all("/api/v2/projects/", params)
 
         return [
             Project(
@@ -585,7 +592,7 @@ class RestAWXClient(AWXClient):
                 scm_branch=item.get("scm_branch"),
                 status=item.get("status"),
             )
-            for item in await self._all_results(data)
+            for item in items
         ]
 
     async def get_project(self, project_id: int) -> Project:
@@ -665,7 +672,7 @@ class RestAWXClient(AWXClient):
         if name_filter:
             params["name__icontains"] = name_filter
 
-        data = await self._request("GET", "/api/v2/inventories/", params=params)
+        items = await self._get_all("/api/v2/inventories/", params)
 
         return [
             Inventory(
@@ -676,7 +683,7 @@ class RestAWXClient(AWXClient):
                 total_hosts=item.get("total_hosts", 0),
                 hosts_with_active_failures=item.get("hosts_with_active_failures", 0),
             )
-            for item in await self._all_results(data)
+            for item in items
         ]
 
     async def get_inventory(self, inventory_id: int) -> Inventory:
@@ -726,10 +733,9 @@ class RestAWXClient(AWXClient):
     ) -> list[dict[str, Any]]:
         """List groups in inventory."""
         params = {"page": page, "page_size": page_size}
-        data = await self._request(
-            "GET", f"/api/v2/inventories/{inventory_id}/groups/", params=params
+        return await self._get_all(
+            f"/api/v2/inventories/{inventory_id}/groups/", params
         )
-        return await self._all_results(data)
 
     async def create_inventory_group(
         self,
@@ -756,10 +762,7 @@ class RestAWXClient(AWXClient):
     ) -> list[dict[str, Any]]:
         """List hosts in inventory."""
         params = {"page": page, "page_size": page_size}
-        data = await self._request(
-            "GET", f"/api/v2/inventories/{inventory_id}/hosts/", params=params
-        )
-        return await self._all_results(data)
+        return await self._get_all(f"/api/v2/inventories/{inventory_id}/hosts/", params)
 
     async def create_inventory_host(
         self,
@@ -829,9 +832,9 @@ class RestAWXClient(AWXClient):
         if job_template_id:
             params["job_template"] = job_template_id
 
-        data = await self._request("GET", "/api/v2/jobs/", params=params)
+        items = await self._get_all("/api/v2/jobs/", params)
 
-        return [self._parse_job(item) for item in await self._all_results(data)]
+        return [self._parse_job(item) for item in items]
 
     async def cancel_job(self, job_id: int) -> dict[str, Any]:
         """Cancel running job."""
@@ -849,11 +852,6 @@ class RestAWXClient(AWXClient):
         Per AWX API docs: GET /api/v2/jobs/{id}/stdout/
         Format options: api, html, txt, ansi, json, txt_download, ansi_download
         """
-        import json
-        from awx_mcp_server.utils import get_logger
-
-        logger = get_logger(__name__)
-
         params = {"format": format}
         endpoint = f"/api/v2/jobs/{job_id}/stdout/"
 
@@ -966,9 +964,7 @@ class RestAWXClient(AWXClient):
         if failed_only:
             params["failed"] = "true"
 
-        data = await self._request(
-            "GET", f"/api/v2/jobs/{job_id}/job_events/", params=params
-        )
+        items = await self._get_all(f"/api/v2/jobs/{job_id}/job_events/", params)
 
         return [
             JobEvent(
@@ -985,7 +981,7 @@ class RestAWXClient(AWXClient):
                 stderr=item.get("event_data", {}).get("res", {}).get("stderr"),
                 event_data=item.get("event_data", {}),
             )
-            for item in await self._all_results(data)
+            for item in items
         ]
 
     def _parse_job(self, data: dict[str, Any]) -> Job:
@@ -1011,8 +1007,6 @@ class RestAWXClient(AWXClient):
         extra_vars = data.get("extra_vars", {})
         if isinstance(extra_vars, str):
             try:
-                import json
-
                 extra_vars = json.loads(extra_vars) if extra_vars else {}
             except (json.JSONDecodeError, ValueError):
                 extra_vars = {}
@@ -1108,13 +1102,8 @@ class RestAWXClient(AWXClient):
         if name_filter:
             params["name__icontains"] = name_filter
 
-        data = await self._request(
-            "GET", "/api/v2/workflow_job_templates/", params=params
-        )
-        return [
-            self._parse_workflow_job_template(item)
-            for item in await self._all_results(data)
-        ]
+        items = await self._get_all("/api/v2/workflow_job_templates/", params)
+        return [self._parse_workflow_job_template(item) for item in items]
 
     async def get_workflow_job_template(self, template_id: int) -> WorkflowJobTemplate:
         """Get workflow job template by ID."""
@@ -1169,10 +1158,8 @@ class RestAWXClient(AWXClient):
         if workflow_template_id:
             params["workflow_job_template"] = workflow_template_id
 
-        data = await self._request("GET", "/api/v2/workflow_jobs/", params=params)
-        return [
-            self._parse_workflow_job(item) for item in await self._all_results(data)
-        ]
+        items = await self._get_all("/api/v2/workflow_jobs/", params)
+        return [self._parse_workflow_job(item) for item in items]
 
     async def cancel_workflow_job(self, job_id: int) -> dict[str, Any]:
         """Cancel running workflow job."""
@@ -1192,12 +1179,9 @@ class RestAWXClient(AWXClient):
     ) -> list[dict[str, Any]]:
         """Get workflow job template node definitions (the template graph)."""
         params = {"page": page, "page_size": page_size}
-        data = await self._request(
-            "GET",
-            f"/api/v2/workflow_job_templates/{template_id}/workflow_nodes/",
-            params=params,
+        return await self._get_all(
+            f"/api/v2/workflow_job_templates/{template_id}/workflow_nodes/", params
         )
-        return await self._all_results(data)
 
     async def get_workflow_job_template_survey(
         self, template_id: int
@@ -1212,12 +1196,9 @@ class RestAWXClient(AWXClient):
     ) -> list[dict[str, Any]]:
         """List schedules for a workflow job template."""
         params = {"page": page, "page_size": page_size}
-        data = await self._request(
-            "GET",
-            f"/api/v2/workflow_job_templates/{template_id}/schedules/",
-            params=params,
+        return await self._get_all(
+            f"/api/v2/workflow_job_templates/{template_id}/schedules/", params
         )
-        return await self._all_results(data)
 
     async def get_workflow_job_template_launch_config(
         self, template_id: int
@@ -1232,10 +1213,7 @@ class RestAWXClient(AWXClient):
     ) -> list[WorkflowJobNode]:
         """Get workflow job nodes."""
         params = {"page": page, "page_size": page_size}
-        data = await self._request(
-            "GET", f"/api/v2/workflow_jobs/{job_id}/workflow_nodes/", params=params
+        items = await self._get_all(
+            f"/api/v2/workflow_jobs/{job_id}/workflow_nodes/", params
         )
-        return [
-            self._parse_workflow_job_node(item)
-            for item in await self._all_results(data)
-        ]
+        return [self._parse_workflow_job_node(item) for item in items]

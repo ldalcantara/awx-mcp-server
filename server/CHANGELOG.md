@@ -5,6 +5,24 @@ All notable changes to the AWX MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Performance
+- **Connection reuse across tool calls** — the server now caches one
+  `CompositeAWXClient` per resolved (URL, credentials) and marks it
+  `persistent`, so per-handler `async with client` blocks keep the httpx
+  connection pool open. Repeated tool calls reuse warm connections instead of
+  paying a fresh TCP+TLS handshake on every call. The cache holds up to 8
+  clients (LRU); evicted clients are closed in the background.
+- **Full listings fetch at AWX's max page size** — paginated list methods now
+  request `page_size=200` when starting from page 1, so collecting all pages
+  (up to the 1000-item guard) costs ~5 round-trips instead of ~40 at the
+  25-item default. An explicit `page > 1` keeps the caller's `page_size`,
+  preserving page offsets. Introduced `RestAWXClient._get_all()` to replace
+  the request-then-`_all_results` boilerplate at every list call site.
+- Hoisted per-request `get_logger()`/`import json` calls in
+  `rest_client.py` to module level (they ran on every HTTP request).
+
 ## [1.3.0] - 2026-04-24
 
 ### Added

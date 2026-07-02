@@ -68,6 +68,38 @@ async def test_list_follows_pagination():
     assert calls["n"] == 2
 
 
+async def test_full_listing_requests_max_page_size():
+    """A listing that starts at page 1 must ask for AWX's max page size (200),
+    so collecting everything costs ~5 round-trips instead of ~40."""
+    client = _client()
+    seen = {}
+
+    async def serve(method, endpoint, **kwargs):
+        seen.update(kwargs.get("params") or {})
+        return _response(200, json.dumps({"results": [], "next": None}).encode())
+
+    client.client.request = serve
+    await client.list_credentials()
+    assert seen["page"] == 1
+    assert seen["page_size"] == 200
+
+
+async def test_explicit_page_keeps_caller_page_size():
+    """An explicit page > 1 must keep the caller's page_size — changing it
+    would shift which items the requested page starts at."""
+    client = _client()
+    seen = {}
+
+    async def serve(method, endpoint, **kwargs):
+        seen.update(kwargs.get("params") or {})
+        return _response(200, json.dumps({"results": [], "next": None}).encode())
+
+    client.client.request = serve
+    await client.list_credentials(page=2, page_size=25)
+    assert seen["page"] == 2
+    assert seen["page_size"] == 25
+
+
 async def test_failed_delete_raises():
     """A DELETE returning 4xx must raise, not silently succeed."""
     client = _client()

@@ -537,9 +537,12 @@ Configure multiple AAP instances:
 # Test server health
 curl http://your-server:8000/health
 
-# Test API with your key
-curl http://your-server:8000/api/v1/environments \
-  -H "X-API-Key: awx_mcp_abc123xyz..."
+# Test the MCP endpoint with your key
+curl -X POST http://your-server:8000/mcp \
+  -H "X-API-Key: awx_mcp_abc123xyz..." \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "env_list", "arguments": {}}}'
 ```
 
 ### 2. Test in Copilot Chat

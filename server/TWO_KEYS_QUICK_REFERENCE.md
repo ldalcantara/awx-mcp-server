@@ -244,9 +244,12 @@ echo $MCP_API_KEY          # Should show: awx_mcp_def789ghi012...
 # Test health endpoint
 curl https://awx-mcp-server.example.com/health
 
-# Test with your MCP API key
-curl https://awx-mcp-server.example.com/api/v1/environments \
-  -H "X-API-Key: awx_mcp_def789ghi012..."
+# Test the MCP endpoint with your key
+curl -X POST https://awx-mcp-server.example.com/mcp \
+  -H "X-API-Key: awx_mcp_def789ghi012..." \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "env_list", "arguments": {}}}'
 ```
 
 ### Test 3: Test in Copilot Chat

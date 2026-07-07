@@ -1,11 +1,11 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.SurgeX-Labs/awx-mcp-server",
+  "name": "io.github.ldalcantara/awx-mcp-server",
   "displayName": "AWX MCP Server",
   "description": "Control AWX/Ansible Tower through natural language - 49 tools for automation",
   "icon": "icon.png",
   "repository": {
-    "url": "https://github.com/SurgeX-Labs/awx-mcp-server",
+    "url": "https://github.com/ldalcantara/awx-mcp-server",
     "source": "github"
   },
   "version": "1.3.0",

@@ -138,3 +138,71 @@ def test_ssrf_guard_allows_listed_host(monkeypatch):
     )
     # initialize doesn't touch AWX, so an allowlisted host passes the guard.
     assert r.status_code == 200
+
+
+# --- Robustness / observability follow-ups ---------------------------------
+
+
+def test_mcp_malformed_json_returns_parse_error(client):
+    """A malformed body must yield a JSON-RPC -32700, not an unhandled 500
+    (the generic handler used to hit an unbound ``message`` variable)."""
+    key = _add_key()
+    r = client.post(
+        "/mcp",
+        content=b"{not valid json",
+        headers={"X-API-Key": key, "Content-Type": "application/json"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["error"]["code"] == -32700
+
+
+def test_endpoints_report_package_version(client):
+    """/, /health and the MCP initialize handshake must all report the real
+    package version instead of stale hardcoded strings."""
+    from awx_mcp_server import __version__
+
+    assert client.get("/").json()["version"] == __version__
+    assert client.get("/health").json()["version"] == __version__
+    key = _add_key()
+    r = client.post("/mcp", json=INIT, headers={"X-API-Key": key})
+    assert r.json()["result"]["serverInfo"]["version"] == __version__
+
+
+def test_failed_tool_call_recorded_as_error(client, monkeypatch):
+    """A tools/call that ends in a JSON-RPC error must be recorded with
+    success=False (it used to be recorded as a success up front)."""
+    key = _add_key()
+    recorded = {}
+
+    def rec(tenant_id, tool_name, success=True):
+        recorded["success"] = success
+
+    monkeypatch.setattr(hs.monitoring_service, "record_tool_call", rec)
+    # No tool name -> CallToolRequest validation fails inside processing.
+    msg = {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {}}
+    r = client.post("/mcp", json=msg, headers={"X-API-Key": key})
+    assert r.status_code == 200
+    assert "error" in r.json()
+    assert recorded.get("success") is False
+
+
+def test_rpc_level_tool_success_recorded_as_success(client, monkeypatch):
+    """A tools/call that completes at the JSON-RPC level records success=True."""
+    key = _add_key()
+    recorded = {}
+
+    def rec(tenant_id, tool_name, success=True):
+        recorded["success"] = success
+
+    monkeypatch.setattr(hs.monitoring_service, "record_tool_call", rec)
+    msg = {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {"name": "env_get_active", "arguments": {}},
+    }
+    r = client.post("/mcp", json=msg, headers={"X-API-Key": key})
+    assert r.status_code == 200
+    assert "error" not in r.json()
+    assert recorded.get("success") is True

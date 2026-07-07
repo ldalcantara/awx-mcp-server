@@ -428,12 +428,12 @@ if __name__ == "__main__":
   "display_name": "AWX MCP Server",
   "description": "Control AWX/Ansible Tower through MCP protocol",
   "author": {
-    "name": "SurgeX Labs",
-    "url": "https://github.com/SurgeX-Labs/awx-mcp-server"
+    "name": "ldalcantara",
+    "url": "https://github.com/ldalcantara/awx-mcp-server"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/SurgeX-Labs/awx-mcp-server"
+    "url": "https://github.com/ldalcantara/awx-mcp-server"
   },
   "server": {
     "type": "python",
@@ -494,7 +494,7 @@ The VS Code extension should:
 For maximum portability and industry standard compliance:
 
 1. Rewrite server in TypeScript (from Python)
-2. Publish to npm: `@surgex/awx-mcp-server`
+2. Publish to npm: `@ldalcantara/awx-mcp-server`
 3. Add HTTP transport option (remote server)
 4. Match Postman architecture exactly
 

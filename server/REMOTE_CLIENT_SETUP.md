@@ -40,7 +40,7 @@ This guide shows how to configure **VS Code GitHub Copilot Chat** to communicate
 │  └──────────────────────────┘   │
 │              │                  │
 │              ▼                  │
-│     https://aap.devfg.surgexlabs.com/  │
+│     https://aap.dev.example.com/  │
 └─────────────────────────────────┘
 ```
 
@@ -121,7 +121,7 @@ The **GitHub Copilot extension** already includes MCP protocol support. Just con
 docker run -d \
   -p 8000:8000 \
   --name awx-mcp-server \
-  surgexlabs/awx-mcp-server:latest
+  ldalcantara/awx-mcp-server:latest
 ```
 
 **Or on Kubernetes**:
@@ -198,7 +198,7 @@ If your MCP server is running without API key enforcement, you can skip this ste
 
 **This is YOUR personal AAP authentication token:**
 
-1. **Log in to your AAP instance**: https://aap.devfg.surgexlabs.com
+1. **Log in to your AAP instance**: https://aap.dev.example.com
 
 2. **Navigate to**: Users → Your Profile → Tokens
 
@@ -256,7 +256,7 @@ echo $AAP_TOKEN
       "transport": "http",
       "headers": {
         "X-API-Key": "awx_mcp_abc123xyz...",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {
@@ -278,7 +278,7 @@ echo $AAP_TOKEN
       "url": "http://your-mcp-server.com:8000/mcp",
       "transport": "http",
       "headers": {
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {
@@ -301,7 +301,7 @@ echo $AAP_TOKEN
       "transport": "http",
       "headers": {
         "X-API-Key": "${env:MCP_API_KEY}",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
       "env": {
@@ -346,7 +346,7 @@ For real-time updates and job monitoring:
       "transport": "sse",
       "headers": {
         "X-API-Key": "awx_mcp_abc123xyz...",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {
@@ -481,7 +481,7 @@ Configure multiple AAP instances:
       "transport": "http",
       "headers": {
         "X-API-Key": "awx_mcp_prod_key",
-        "X-AWX-Base-URL": "https://aap.prod.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.prod.example.com",
         "X-AWX-Platform": "aap",
         "X-Environment": "production"
       },
@@ -494,7 +494,7 @@ Configure multiple AAP instances:
       "transport": "http",
       "headers": {
         "X-API-Key": "awx_mcp_dev_key",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap",
         "X-Environment": "development"
       },
@@ -660,25 +660,25 @@ Ensure these ports are open:
 
 ---
 
-## 📊 Complete Configuration Example (surgexlabs AAP)
+## 📊 Complete Configuration Example (example AAP)
 
-Based on your AAP URL: `https://aap.devfg.surgexlabs.com`
+Based on your AAP URL: `https://aap.dev.example.com`
 
 ```json
 {
   "mcpServers": {
-    "surgexlabs-aap-dev": {
-      "url": "https://awx-mcp-server.surgexlabs.com/mcp",
+    "example-aap-dev": {
+      "url": "https://awx-mcp-server.example.com/mcp",
       "transport": "http",
       "headers": {
-        "X-API-Key": "awx_mcp_surgexlabs_dev_key_abc123",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-API-Key": "awx_mcp_example_dev_key_abc123",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap",
         "X-AWX-Verify-SSL": "true",
         "X-Environment": "development"
       },
       "secrets": {
-        "X-AWX-Token": "surgexlabs-aap-dev-token"
+        "X-AWX-Token": "example-aap-dev-token"
       }
     }
   }
@@ -688,13 +688,13 @@ Based on your AAP URL: `https://aap.devfg.surgexlabs.com`
 **Steps**:
 
 1. **Get AAP Token**:
-   - Log in to https://aap.devfg.surgexlabs.com
+   - Log in to https://aap.dev.example.com
    - Go to **Users** → **Your Profile** → **Tokens**
    - Create new token, copy it
 
 2. **Get MCP Server API Key**:
    ```bash
-   curl -X POST https://awx-mcp-server.surgexlabs.com/api/keys \
+   curl -X POST https://awx-mcp-server.example.com/api/keys \
      -H "Content-Type: application/json" \
      -d '{"name":"your-name-vscode","tenant_id":"your-email"}'
    ```
@@ -706,8 +706,8 @@ Based on your AAP URL: `https://aap.devfg.surgexlabs.com`
 
 4. **Test**:
    ```
-   @surgexlabs-aap-dev List job templates
-   @surgexlabs-aap-dev Launch "Deploy to Dev" job
+   @example-aap-dev List job templates
+   @example-aap-dev Launch "Deploy to Dev" job
    ```
 
 ---
@@ -744,7 +744,7 @@ telnet your-server 8000
 **Check**:
 - AAP token is valid (test with curl):
   ```bash
-  curl https://aap.devfg.surgexlabs.com/api/v2/me/ \
+  curl https://aap.dev.example.com/api/v2/me/ \
     -H "Authorization: Bearer YOUR_TOKEN"
   ```
 
@@ -758,7 +758,7 @@ telnet your-server 8000
 ```
 
 **Proper Fix**:
-1. Install surgexlabs CA certificate on your workstation
+1. Install your organization's CA certificate on your workstation
 2. Configure VS Code to trust it
 3. Use `X-AWX-Verify-SSL: "true"`
 
@@ -836,7 +836,7 @@ Configure retry behavior:
       "url": "http://localhost:8000/mcp",
       "headers": {
         "X-API-Key": "your-mcp-key",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com"
+        "X-AWX-Base-URL": "https://aap.dev.example.com"
       },
       "secrets": {
         "X-AWX-Token": "your-aap-token"
@@ -890,13 +890,13 @@ Before using in production:
 
 ## 🎓 Getting Both Keys - Complete Walkthrough
 
-### Scenario: Setting Up for surgexlabs AAP Development Environment
+### Scenario: Setting Up for an AAP Development Environment
 
 Here's the **complete step-by-step flow** to get both keys and configure VS Code:
 
 #### **Step 1: Get Key #1 (AAP Token) - Your Personal Credentials**
 
-1. **Open browser** → Navigate to https://aap.devfg.surgexlabs.com
+1. **Open browser** → Navigate to https://aap.dev.example.com
 
 2. **Log in** with your LDAP/SSO credentials
 
@@ -941,12 +941,12 @@ Here's the **complete step-by-step flow** to get both keys and configure VS Code
 
 ```bash
 # Admin creates your API key
-curl -X POST https://awx-mcp-server.surgexlabs.com/api/keys \
+curl -X POST https://awx-mcp-server.example.com/api/keys \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "john-doe-vscode",
-    "tenant_id": "john.doe@surgexlabs.com",
+    "tenant_id": "john.doe@example.com",
     "expires_days": 90
   }'
 ```
@@ -991,12 +991,12 @@ echo $MCP_API_KEY
 ```json
 {
   "github.copilot.chat.mcpServers": {
-    "surgexlabs-aap-dev": {
-      "url": "https://awx-mcp-server.surgexlabs.com/mcp",
+    "example-aap-dev": {
+      "url": "https://awx-mcp-server.example.com/mcp",
       "transport": "http",
       "headers": {
         "X-API-Key": "${env:MCP_API_KEY}",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap",
         "X-AWX-Verify-SSL": "true"
       },
@@ -1028,11 +1028,11 @@ Ctrl+Shift+P → "Developer: Reload Window"
 Open **GitHub Copilot Chat** and try:
 
 ```
-@surgexlabs-aap-dev List all job templates
+@example-aap-dev List all job templates
 
-@surgexlabs-aap-dev Show AAP version
+@example-aap-dev Show AAP version
 
-@surgexlabs-aap-dev Launch "Deploy to Dev" job
+@example-aap-dev Launch "Deploy to Dev" job
 ```
 
 ✅ **If you see results, both keys are working!**
@@ -1046,12 +1046,12 @@ If you prefer NOT to use environment variables:
 ```json
 {
   "github.copilot.chat.mcpServers": {
-    "surgexlabs-aap-dev": {
-      "url": "https://awx-mcp-server.surgexlabs.com/mcp",
+    "example-aap-dev": {
+      "url": "https://awx-mcp-server.example.com/mcp",
       "transport": "http",
       "headers": {
         "X-API-Key": "awx_mcp_def789ghi012...",
-        "X-AWX-Base-URL": "https://aap.devfg.surgexlabs.com",
+        "X-AWX-Base-URL": "https://aap.dev.example.com",
         "X-AWX-Platform": "aap"
       },
       "secrets": {

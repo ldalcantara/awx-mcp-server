@@ -518,11 +518,11 @@ Following the pure MCP pattern (like Postman) gives you:
 ## 🆘 Support
 
 **Issues:**
-- GitHub: https://github.com/SurgeX-Labs/awx-mcp-server/issues
+- GitHub: https://github.com/ldalcantara/awx-mcp-server/issues
 - MCP Server: `awx-mcp-server` package (PyPI)
 
 **Extension (Optional):**
-- Extension ID: `surgexlabs.awx-mcp-extension`
+- Extension ID: `ldalcantara.awx-mcp-extension`
 - Marketplace: VS Code Extensions
 
 ---

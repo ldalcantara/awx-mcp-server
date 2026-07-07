@@ -33,6 +33,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JSON-RPC outcome instead of unconditionally counting `success` before
   the tool ran.
 
+### Removed
+- **Legacy REST surface** (`/api/v1/*`, 15 endpoints) and the `/messages`
+  stub. `ENDPOINT_CLEANUP.md` had already declared these removed, but the
+  code still shipped them: they duplicated MCP tools, leaked one AWX client
+  (and its connection pool) per request, and several no longer matched the
+  client signatures at all (`list_jobs(status_filter=...)`,
+  name-vs-id mismatches, positional `page` binding into `failed_only`).
+  `/mcp` tools are the only AWX path; README/setup docs now show the
+  equivalent `tools/call` requests. The root endpoint now advertises only
+  routes that actually exist (`/docs` only when `MCP_ENABLE_DOCS` is set).
+
 ### Security
 - Tool-call arguments are redacted before logging (new
   `utils.redact_sensitive`): values under keys matching password / token /

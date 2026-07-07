@@ -209,31 +209,45 @@ awx-mcp-server projects update "My Project"
 awx-mcp-server inventories list
 ```
 
-#### REST API Usage
+#### MCP-over-HTTP Usage
+
+The HTTP transport speaks MCP JSON-RPC on `/mcp` — every AWX operation is a
+`tools/call`:
 
 ```bash
-# Create API key (first time)
+# Create API key (first time; requires ADMIN_TOKEN on the server)
 curl -X POST http://localhost:8000/api/keys \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name": "chatbot", "tenant_id": "team1", "expires_days": 90}'
 
 # List job templates
-curl http://localhost:8000/api/v1/job-templates \
-  -H "X-API-Key: awx_mcp_xxxxx"
-
-# Launch job
-curl -X POST http://localhost:8000/api/v1/jobs/launch \
+curl -X POST http://localhost:8000/mcp \
   -H "X-API-Key: awx_mcp_xxxxx" \
   -H "Content-Type: application/json" \
-  -d '{"template_name": "Deploy App", "extra_vars": {"env": "prod"}}'
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "awx_templates_list", "arguments": {}}}'
+
+# Launch job
+curl -X POST http://localhost:8000/mcp \
+  -H "X-API-Key: awx_mcp_xxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "awx_job_launch", "arguments": {"template_id": 42, "extra_vars": {"env": "prod"}}}}'
 
 # Get job status
-curl http://localhost:8000/api/v1/jobs/123 \
-  -H "X-API-Key: awx_mcp_xxxxx"
+curl -X POST http://localhost:8000/mcp \
+  -H "X-API-Key: awx_mcp_xxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "awx_job_get", "arguments": {"job_id": 123}}}'
 
 # Get job output
-curl http://localhost:8000/api/v1/jobs/123/stdout \
-  -H "X-API-Key: awx_mcp_xxxxx"
+curl -X POST http://localhost:8000/mcp \
+  -H "X-API-Key: awx_mcp_xxxxx" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+       "params": {"name": "awx_job_stdout", "arguments": {"job_id": 123}}}'
 ```
 
 #### Kubernetes Deployment
@@ -275,30 +289,32 @@ class AWXChatbot:
             job_id = self.extract_job_id(user_message)
             return await self.get_job(job_id)
     
-    async def list_templates(self):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.base_url}/api/v1/job-templates",
-                headers=self.headers
-            )
-            return response.json()
-    
-    async def launch_job(self, template_name: str, extra_vars: dict = None):
+    async def call_tool(self, name: str, arguments: dict):
+        """Invoke an MCP tool over the /mcp JSON-RPC endpoint."""
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.base_url}/api/v1/jobs/launch",
+                f"{self.base_url}/mcp",
                 headers=self.headers,
-                json={"template_name": template_name, "extra_vars": extra_vars}
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {"name": name, "arguments": arguments},
+                },
             )
             return response.json()
-    
+
+    async def list_templates(self):
+        return await self.call_tool("awx_templates_list", {})
+
+    async def launch_job(self, template_id: int, extra_vars: dict = None):
+        return await self.call_tool(
+            "awx_job_launch",
+            {"template_id": template_id, "extra_vars": extra_vars or {}},
+        )
+
     async def get_job(self, job_id: int):
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{self.base_url}/api/v1/jobs/{job_id}",
-                headers=self.headers
-            )
-            return response.json()
+        return await self.call_tool("awx_job_get", {"job_id": job_id})
 
 # Usage
 chatbot = AWXChatbot(api_key="awx_mcp_xxxxx")
@@ -323,16 +339,24 @@ async def handle_awx_command(message, say):
         # Extract template name from message
         template = extract_template(text)
         
-        # Call AWX API
+        # Call the MCP endpoint
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{awx_base_url}/api/v1/jobs/launch",
+                f"{awx_base_url}/mcp",
                 headers={"X-API-Key": awx_api_key},
-                json={"template_name": template}
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "awx_job_launch",
+                        "arguments": {"template_id": template},
+                    },
+                },
             )
-            job = response.json()
+            result = response.json()
         
-        await say(f"✅ Job launched! ID: {job['id']}, Status: {job['status']}")
+        await say(f"✅ {result['result']['content'][0]['text']}")
 ```
 
 ---
@@ -737,17 +761,13 @@ awx-mcp-server inventories list         # List inventories
 ### Web Server API Endpoints
 
 ```
-POST   /api/keys                         # Create API key
-GET    /api/v1/environments              # List environments
-GET    /api/v1/job-templates             # List templates
-POST   /api/v1/jobs/launch               # Launch job
-GET    /api/v1/jobs/{id}                 # Get job
-GET    /api/v1/jobs/{id}/stdout          # Get output
-GET    /api/v1/projects                  # List projects
-GET    /api/v1/inventories               # List inventories
+POST   /mcp                              # MCP JSON-RPC (all AWX operations)
+GET    /mcp/sse                          # MCP Server-Sent Events stream
+POST   /api/keys                         # Create API key (admin)
+GET    /api/keys                         # List API keys (admin)
 GET    /health                           # Health check
-GET    /prometheus-metrics               # Metrics
-GET    /docs                             # API documentation
+GET    /prometheus-metrics               # Metrics (API key required)
+GET    /docs                             # API docs (MCP_ENABLE_DOCS=true)
 ```
 
 ---

@@ -206,3 +206,32 @@ def test_rpc_level_tool_success_recorded_as_success(client, monkeypatch):
     assert r.status_code == 200
     assert "error" not in r.json()
     assert recorded.get("success") is True
+
+
+# --- Legacy surface removal --------------------------------------------------
+
+
+def test_legacy_rest_surface_is_gone(client):
+    """The /api/v1/* REST endpoints and the /messages stub duplicated /mcp,
+    leaked AWX clients, and no longer matched the client signatures. They are
+    removed; MCP tools are the only AWX path."""
+    key = _add_key()
+    for path in ("/api/v1/environments", "/api/v1/job-templates", "/api/v1/jobs"):
+        assert client.get(path, headers={"X-API-Key": key}).status_code == 404
+    assert (
+        client.post("/messages", json=INIT, headers={"X-API-Key": key}).status_code
+        == 404
+    )
+
+
+def test_root_advertises_only_real_endpoints(client):
+    """The root listing must not advertise endpoints that don't exist."""
+    endpoints = client.get("/").json()["endpoints"]
+    assert "messages" not in endpoints
+    assert "stats" not in endpoints
+    assert endpoints["mcp"] == "/mcp"
+    for path in endpoints.values():
+        # Every advertised path must resolve to a real route (405 is fine:
+        # it exists but expects a different method).
+        r = client.get(path)
+        assert r.status_code != 404, f"advertised endpoint {path} does not exist"

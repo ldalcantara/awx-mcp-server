@@ -191,7 +191,7 @@ Configure multiple MCP servers in `settings.json`, each with separate environmen
   "awx-dev": {
     "headers": {
       "X-AWX-Base-URL": "https://awx-dev.example.com",
-      "X-AWX-Token": "dev_token_abc123",  // Using token instead of password
+      "X-AWX-Token": "<YOUR_DEV_TOKEN>",  // Using token instead of password
       "X-AWX-Platform": "awx",
       "X-AWX-Verify-SSL": "true"  // ✅ Enable SSL
     }

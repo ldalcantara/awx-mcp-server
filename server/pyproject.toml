@@ -13,6 +13,18 @@ authors = [
 readme = "README.md"
 license = {text = "MIT"}
 keywords = ["awx", "ansible", "mcp", "automation", "model-context-protocol", "github-copilot", "claude"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
     "mcp>=1.0.0",
     "fastapi>=0.109.0",
@@ -55,6 +67,16 @@ awx-mcp-server = "awx_mcp_server.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Pin the formatter/linter line length explicitly so black and ruff agree
+# (both default to 88, but make it non-negotiable in-repo).
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -2148,1277 +2148,1299 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             ),
         ]
 
-    @mcp_server.call_tool()
-    async def call_tool(name: str, arguments: Any) -> list[TextContent]:
-        """Handle tool calls."""
+    async def _h_env_list(arguments: Any) -> list[TextContent]:
+        envs = config_manager.list_environments()
+        active_name = config_manager.get_active_name()
+
+        result = "Configured AWX Environments:\n\n"
+        for env in envs:
+            marker = "* " if env.name == active_name else "  "
+            result += f"{marker}{env.name}\n"
+            result += f"  URL: {env.base_url}\n"
+            result += f"  SSL Verify: {env.verify_ssl}\n"
+            if env.default_organization:
+                result += f"  Default Org: {env.default_organization}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_env_set_active(arguments: Any) -> list[TextContent]:
+        env_name = arguments["env_name"]
+        config_manager.set_active(env_name)
+        return [TextContent(type="text", text=f"Active environment set to: {env_name}")]
+
+    async def _h_env_get_active(arguments: Any) -> list[TextContent]:
         try:
-            # Redact credential inputs / extra_vars etc. before logging.
-            logger.info("tool_call", tool=name, arguments=redact_sensitive(arguments))
-            if name in _HANDLERS:
-                return await _HANDLERS[name](arguments)
+            env = config_manager.get_active()
+            return [TextContent(type="text", text=f"Active environment: {env.name}")]
+        except NoActiveEnvironmentError:
+            return [TextContent(type="text", text="No active environment set")]
 
-            if name == "env_list":
-                envs = config_manager.list_environments()
-                active_name = config_manager.get_active_name()
+    async def _h_env_test_connection(arguments: Any) -> list[TextContent]:
+        env_name = arguments.get("env_name")
 
-                result = "Configured AWX Environments:\n\n"
-                for env in envs:
-                    marker = "* " if env.name == active_name else "  "
-                    result += f"{marker}{env.name}\n"
-                    result += f"  URL: {env.base_url}\n"
-                    result += f"  SSL Verify: {env.verify_ssl}\n"
-                    if env.default_organization:
-                        result += f"  Default Org: {env.default_organization}\n"
-                    result += "\n"
+        if env_name:
+            env = config_manager.get_environment(env_name)
+            try:
+                username, secret = credential_store.get_credential(
+                    env.env_id, CredentialType.PASSWORD
+                )
+                is_token = False
+            except Exception:
+                username, secret = credential_store.get_credential(
+                    env.env_id, CredentialType.TOKEN
+                )
+                is_token = True
 
-                return [TextContent(type="text", text=result)]
+            client = RestAWXClient(env, username, secret, is_token)
+        else:
+            env, client = get_active_client()
 
-            elif name == "env_set_active":
-                env_name = arguments["env_name"]
-                config_manager.set_active(env_name)
-                return [
-                    TextContent(
-                        type="text", text=f"Active environment set to: {env_name}"
-                    )
-                ]
+        async with client:
+            success = await client.test_connection()
 
-            elif name == "env_get_active":
-                try:
-                    env = config_manager.get_active()
-                    return [
-                        TextContent(type="text", text=f"Active environment: {env.name}")
-                    ]
-                except NoActiveEnvironmentError:
-                    return [TextContent(type="text", text="No active environment set")]
+        if success:
+            return [
+                TextContent(type="text", text=f"✓ Connection successful to {env.name}")
+            ]
+        else:
+            return [TextContent(type="text", text=f"✗ Connection failed to {env.name}")]
 
-            elif name == "env_test_connection":
-                env_name = arguments.get("env_name")
+    # System Info
+    async def _h_awx_system_info(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        info_type = arguments["info_type"]
 
-                if env_name:
-                    env = config_manager.get_environment(env_name)
-                    try:
-                        username, secret = credential_store.get_credential(
-                            env.env_id, CredentialType.PASSWORD
-                        )
-                        is_token = False
-                    except Exception:
-                        username, secret = credential_store.get_credential(
-                            env.env_id, CredentialType.TOKEN
-                        )
-                        is_token = True
+        async with client:
+            if info_type == "config":
+                data = await client.get_config()
+                result = "AWX System Configuration:\n\n"
+                for key, value in data.items():
+                    result += f"{key}: {value}\n"
+            elif info_type == "dashboard":
+                data = await client.get_dashboard()
+                result = "AWX Dashboard:\n\n"
+                for key, value in data.items():
+                    result += f"{key}: {value}\n"
+            elif info_type == "settings":
+                data = await client.get_settings()
+                result = "AWX Settings:\n\n"
+                for key, value in data.items():
+                    result += f"{key}: {value}\n"
+            elif info_type == "me":
+                data = await client.get_me()
+                result = "Current User Info:\n\n"
+                result += f"ID: {data.get('id')}\n"
+                result += f"Username: {data.get('username')}\n"
+                result += f"Email: {data.get('email', 'N/A')}\n"
+                result += f"First Name: {data.get('first_name', 'N/A')}\n"
+                result += f"Last Name: {data.get('last_name', 'N/A')}\n"
+                result += f"Is Superuser: {data.get('is_superuser', False)}\n"
 
-                    client = RestAWXClient(env, username, secret, is_token)
-                else:
-                    env, client = get_active_client()
+        return [TextContent(type="text", text=result)]
 
-                async with client:
-                    success = await client.test_connection()
+    # Organizations
+    async def _h_awx_organizations_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            orgs = await client.list_organizations(
+                name_filter=arguments.get("filter"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
 
-                if success:
-                    return [
-                        TextContent(
-                            type="text", text=f"✓ Connection successful to {env.name}"
-                        )
-                    ]
-                else:
-                    return [
-                        TextContent(
-                            type="text", text=f"✗ Connection failed to {env.name}"
-                        )
-                    ]
+        result = f"Organizations ({len(orgs)}):\n\n"
+        for org in orgs:
+            result += f"ID: {org['id']} - {org['name']}\n"
+            if org.get("description"):
+                result += f"  Description: {org['description']}\n"
+            result += "\n"
 
-            # System Info
-            elif name == "awx_system_info":
-                env, client = get_active_client()
-                info_type = arguments["info_type"]
+        return [TextContent(type="text", text=result)]
 
-                async with client:
-                    if info_type == "config":
-                        data = await client.get_config()
-                        result = "AWX System Configuration:\n\n"
-                        for key, value in data.items():
-                            result += f"{key}: {value}\n"
-                    elif info_type == "dashboard":
-                        data = await client.get_dashboard()
-                        result = "AWX Dashboard:\n\n"
-                        for key, value in data.items():
-                            result += f"{key}: {value}\n"
-                    elif info_type == "settings":
-                        data = await client.get_settings()
-                        result = "AWX Settings:\n\n"
-                        for key, value in data.items():
-                            result += f"{key}: {value}\n"
-                    elif info_type == "me":
-                        data = await client.get_me()
-                        result = "Current User Info:\n\n"
-                        result += f"ID: {data.get('id')}\n"
-                        result += f"Username: {data.get('username')}\n"
-                        result += f"Email: {data.get('email', 'N/A')}\n"
-                        result += f"First Name: {data.get('first_name', 'N/A')}\n"
-                        result += f"Last Name: {data.get('last_name', 'N/A')}\n"
-                        result += f"Is Superuser: {data.get('is_superuser', False)}\n"
+    async def _h_awx_organization_get(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        org_id = arguments["org_id"]
 
-                return [TextContent(type="text", text=result)]
+        async with client:
+            org = await client.get_organization(org_id)
 
-            # Organizations
-            elif name == "awx_organizations_list":
-                env, client = get_active_client()
-                async with client:
-                    orgs = await client.list_organizations(
-                        name_filter=arguments.get("filter"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
+        result = f"Organization {org_id}:\n\n"
+        result += f"Name: {org['name']}\n"
+        if org.get("description"):
+            result += f"Description: {org['description']}\n"
+        result += f"ID: {org['id']}\n"
 
-                result = f"Organizations ({len(orgs)}):\n\n"
-                for org in orgs:
-                    result += f"ID: {org['id']} - {org['name']}\n"
-                    if org.get("description"):
-                        result += f"  Description: {org['description']}\n"
-                    result += "\n"
+        return [TextContent(type="text", text=result)]
 
-                return [TextContent(type="text", text=result)]
+    # Credentials
+    async def _h_awx_credentials_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            creds = await client.list_credentials(
+                name_filter=arguments.get("filter"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
 
-            elif name == "awx_organization_get":
-                env, client = get_active_client()
-                org_id = arguments["org_id"]
+        result = f"Credentials ({len(creds)}):\n\n"
+        for cred in creds:
+            result += f"ID: {cred['id']} - {cred['name']}\n"
+            if cred.get("description"):
+                result += f"  Description: {cred['description']}\n"
+            result += f"  Type: {cred.get('credential_type')}\n"
+            result += "\n"
 
-                async with client:
-                    org = await client.get_organization(org_id)
+        return [TextContent(type="text", text=result)]
 
-                result = f"Organization {org_id}:\n\n"
-                result += f"Name: {org['name']}\n"
-                if org.get("description"):
-                    result += f"Description: {org['description']}\n"
-                result += f"ID: {org['id']}\n"
+    async def _h_awx_credential_types_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            types = await client.list_credential_types(
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
 
-                return [TextContent(type="text", text=result)]
+        result = f"Credential Types ({len(types)}):\n\n"
+        for ctype in types:
+            result += f"ID: {ctype['id']} - {ctype['name']}\n"
+            if ctype.get("description"):
+                result += f"  Description: {ctype['description']}\n"
+            result += "\n"
 
-            # Credentials
-            elif name == "awx_credentials_list":
-                env, client = get_active_client()
-                async with client:
-                    creds = await client.list_credentials(
-                        name_filter=arguments.get("filter"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
+        return [TextContent(type="text", text=result)]
 
-                result = f"Credentials ({len(creds)}):\n\n"
-                for cred in creds:
-                    result += f"ID: {cred['id']} - {cred['name']}\n"
-                    if cred.get("description"):
-                        result += f"  Description: {cred['description']}\n"
-                    result += f"  Type: {cred.get('credential_type')}\n"
-                    result += "\n"
+    async def _h_awx_credential_create(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            cred = await client.create_credential(
+                name=arguments["name"],
+                credential_type=arguments["credential_type"],
+                organization=arguments["organization"],
+                inputs=arguments["inputs"],
+                description=arguments.get("description", ""),
+            )
 
-                return [TextContent(type="text", text=result)]
+        result = "✓ Credential created successfully\n\n"
+        result += f"ID: {cred['id']}\n"
+        result += f"Name: {cred['name']}\n"
 
-            elif name == "awx_credential_types_list":
-                env, client = get_active_client()
-                async with client:
-                    types = await client.list_credential_types(
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
+        return [TextContent(type="text", text=result)]
 
-                result = f"Credential Types ({len(types)}):\n\n"
-                for ctype in types:
-                    result += f"ID: {ctype['id']} - {ctype['name']}\n"
-                    if ctype.get("description"):
-                        result += f"  Description: {ctype['description']}\n"
-                    result += "\n"
+    async def _h_awx_credential_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        cred_id = arguments["credential_id"]
 
-                return [TextContent(type="text", text=result)]
+        async with client:
+            await client.delete_credential(cred_id)
 
-            elif name == "awx_credential_create":
-                env, client = get_active_client()
-                async with client:
-                    cred = await client.create_credential(
-                        name=arguments["name"],
-                        credential_type=arguments["credential_type"],
-                        organization=arguments["organization"],
-                        inputs=arguments["inputs"],
-                        description=arguments.get("description", ""),
-                    )
+        return [
+            TextContent(type="text", text=f"Credential {cred_id} deleted successfully")
+        ]
 
-                result = "✓ Credential created successfully\n\n"
-                result += f"ID: {cred['id']}\n"
-                result += f"Name: {cred['name']}\n"
+    # Notification Templates
+    async def _h_awx_notification_templates_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            templates = await client.list_notification_templates(
+                name_filter=arguments.get("filter"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
 
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_credential_delete":
-                env, client = get_active_client()
-                cred_id = arguments["credential_id"]
-
-                async with client:
-                    await client.delete_credential(cred_id)
-
-                return [
-                    TextContent(
-                        type="text", text=f"Credential {cred_id} deleted successfully"
-                    )
-                ]
-
-            # Notification Templates
-            elif name == "awx_notification_templates_list":
-                env, client = get_active_client()
-                async with client:
-                    templates = await client.list_notification_templates(
-                        name_filter=arguments.get("filter"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Notification Templates ({len(templates)}):\n\n"
-                for tmpl in templates:
-                    result += f"ID: {tmpl['id']} - {tmpl['name']}\n"
-                    result += f"  Type: {tmpl.get('notification_type', 'unknown')}\n"
-                    if tmpl.get("description"):
-                        result += f"  Description: {tmpl['description']}\n"
-                    if tmpl.get("organization"):
-                        org_name = (
-                            tmpl.get("summary_fields", {})
-                            .get("organization", {})
-                            .get("name")
-                        )
-                        if org_name:
-                            result += f"  Organization: {org_name}\n"
-                    config = tmpl.get("notification_configuration", {})
-                    if config.get("channels"):
-                        result += f"  Channels: {', '.join(config['channels'])}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_notification_template_get":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    tmpl = await client.get_notification_template(template_id)
-
-                result = f"Notification Template {template_id}:\n\n"
-                result += f"Name: {tmpl['name']}\n"
-                result += f"Type: {tmpl.get('notification_type', 'unknown')}\n"
-                if tmpl.get("description"):
-                    result += f"Description: {tmpl['description']}\n"
+        result = f"Notification Templates ({len(templates)}):\n\n"
+        for tmpl in templates:
+            result += f"ID: {tmpl['id']} - {tmpl['name']}\n"
+            result += f"  Type: {tmpl.get('notification_type', 'unknown')}\n"
+            if tmpl.get("description"):
+                result += f"  Description: {tmpl['description']}\n"
+            if tmpl.get("organization"):
                 org_name = (
                     tmpl.get("summary_fields", {}).get("organization", {}).get("name")
                 )
                 if org_name:
-                    result += f"Organization: {org_name}\n"
-
-                config = tmpl.get("notification_configuration", {})
-                result += "\nConfiguration:\n"
-                for key, value in config.items():
-                    if key == "token":
-                        result += f"  {key}: (encrypted)\n"
-                    else:
-                        result += f"  {key}: {value}\n"
-
-                messages = tmpl.get("messages", {})
-                if messages:
-                    result += "\nCustom Messages:\n"
-                    for event, msg in messages.items():
-                        if event == "workflow_approval":
-                            continue
-                        if isinstance(msg, dict) and msg.get("message"):
-                            result += f"  {event}: {msg['message']}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_notification_template_test":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    notif = await client.test_notification_template(template_id)
-
-                result = "Test notification sent\n\n"
-                result += f"Notification ID: {notif.get('id')}\n"
-                result += f"Status: {notif.get('status')}\n"
-                result += f"Type: {notif.get('notification_type')}\n"
-                result += f"Recipients: {notif.get('recipients')}\n"
-                result += f"Subject: {notif.get('subject')}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_notifications_list":
-                env, client = get_active_client()
-
-                async with client:
-                    notifications = await client.list_notifications(
-                        notification_template_id=arguments.get(
-                            "notification_template_id"
-                        ),
-                        status=arguments.get("status"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Notifications ({len(notifications)}):\n\n"
-                for n in notifications:
-                    tmpl_name = (
-                        n.get("summary_fields", {})
-                        .get("notification_template", {})
-                        .get("name", "Unknown")
-                    )
-                    result += f"ID: {n['id']} - {tmpl_name}\n"
-                    result += f"  Status: {n.get('status')}\n"
-                    result += f"  Type: {n.get('notification_type')}\n"
-                    result += f"  Created: {n.get('created')}\n"
-                    result += f"  Recipients: {n.get('recipients')}\n"
-                    if n.get("subject"):
-                        result += f"  Subject: {n['subject'][:100]}\n"
-                    if n.get("error"):
-                        result += f"  Error: {n['error']}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_notification_template_update":
-                env, client = get_active_client()
-                template_id = arguments.pop("template_id")
-
-                async with client:
-                    tmpl = await client.update_notification_template(
-                        template_id,
-                        name=arguments.get("name"),
-                        description=arguments.get("description"),
-                        notification_configuration=arguments.get(
-                            "notification_configuration"
-                        ),
-                        messages=arguments.get("messages"),
-                    )
-
-                result = f"Notification template {template_id} updated\n\n"
-                result += f"Name: {tmpl['name']}\n"
-                result += f"Type: {tmpl.get('notification_type')}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_notification_template_delete":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    await client.delete_notification_template(template_id)
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Notification template {template_id} deleted successfully",
-                    )
-                ]
-
-            elif name == "awx_notification_template_create":
-                env, client = get_active_client()
-                async with client:
-                    tmpl = await client.create_notification_template(
-                        name=arguments["name"],
-                        organization=arguments["organization"],
-                        notification_type=arguments["notification_type"],
-                        notification_configuration=arguments.get(
-                            "notification_configuration"
-                        ),
-                        description=arguments.get("description", ""),
-                        messages=arguments.get("messages"),
-                    )
-
-                result = "Notification template created successfully\n\n"
-                result += f"ID: {tmpl['id']}\n"
-                result += f"Name: {tmpl['name']}\n"
-                result += f"Type: {tmpl.get('notification_type')}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_job_template_notifications_list":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    started = await client.list_job_template_notification_templates(
-                        template_id, "started"
-                    )
-                    success = await client.list_job_template_notification_templates(
-                        template_id, "success"
-                    )
-                    error = await client.list_job_template_notification_templates(
-                        template_id, "error"
-                    )
-
-                result = f"Job Template {template_id} Notifications:\n\n"
-                for event_name, notifs in [
-                    ("Started", started),
-                    ("Success", success),
-                    ("Error", error),
-                ]:
-                    result += f"{event_name} ({len(notifs)}):\n"
-                    if notifs:
-                        for n in notifs:
-                            result += f"  ID: {n['id']} - {n['name']} ({n.get('notification_type', 'unknown')})\n"
-                    else:
-                        result += "  (none)\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_job_template_notification_associate":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-                notification_id = arguments["notification_template_id"]
-                event = arguments["event"]
-
-                async with client:
-                    await client.associate_job_template_notification(
-                        template_id, notification_id, event
-                    )
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Notification template {notification_id} associated with job template {template_id} for '{event}' event",
-                    )
-                ]
-
-            elif name == "awx_job_template_notification_disassociate":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-                notification_id = arguments["notification_template_id"]
-                event = arguments["event"]
-
-                async with client:
-                    await client.disassociate_job_template_notification(
-                        template_id, notification_id, event
-                    )
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Notification template {notification_id} disassociated from job template {template_id} for '{event}' event",
-                    )
-                ]
-
-            elif name == "awx_workflow_template_notifications_list":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    started = (
-                        await client.list_workflow_template_notification_templates(
-                            template_id, "started"
-                        )
-                    )
-                    success = (
-                        await client.list_workflow_template_notification_templates(
-                            template_id, "success"
-                        )
-                    )
-                    error = await client.list_workflow_template_notification_templates(
-                        template_id, "error"
-                    )
-
-                result = f"Workflow Job Template {template_id} Notifications:\n\n"
-                for event_name, notifs in [
-                    ("Started", started),
-                    ("Success", success),
-                    ("Error", error),
-                ]:
-                    result += f"{event_name} ({len(notifs)}):\n"
-                    if notifs:
-                        for n in notifs:
-                            result += f"  ID: {n['id']} - {n['name']} ({n.get('notification_type', 'unknown')})\n"
-                    else:
-                        result += "  (none)\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_workflow_template_notification_associate":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-                notification_id = arguments["notification_template_id"]
-                event = arguments["event"]
-
-                async with client:
-                    await client.associate_workflow_template_notification(
-                        template_id, notification_id, event
-                    )
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Notification template {notification_id} associated with workflow template {template_id} for '{event}' event",
-                    )
-                ]
-
-            elif name == "awx_workflow_template_notification_disassociate":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-                notification_id = arguments["notification_template_id"]
-                event = arguments["event"]
-
-                async with client:
-                    await client.disassociate_workflow_template_notification(
-                        template_id, notification_id, event
-                    )
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Notification template {notification_id} disassociated from workflow template {template_id} for '{event}' event",
-                    )
-                ]
-
-            # Templates CRUD
-            elif name == "awx_template_create":
-                env, client = get_active_client()
-                async with client:
-                    template = await client.create_job_template(
-                        name=arguments["name"],
-                        inventory=arguments["inventory"],
-                        project=arguments["project"],
-                        playbook=arguments["playbook"],
-                        job_type=arguments.get("job_type", "run"),
-                        description=arguments.get("description", ""),
-                        extra_vars=arguments.get("extra_vars"),
-                        limit=arguments.get("limit"),
-                    )
-
-                result = "✓ Job template created successfully\n\n"
-                result += f"ID: {template.id}\n"
-                result += f"Name: {template.name}\n"
-                result += f"Playbook: {template.playbook}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_template_delete":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                async with client:
-                    await client.delete_job_template(template_id)
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Job template {template_id} deleted successfully",
-                    )
-                ]
-
-            # Projects CRUD
-            elif name == "awx_project_create":
-                env, client = get_active_client()
-                async with client:
-                    project = await client.create_project(
-                        name=arguments["name"],
-                        organization=arguments["organization"],
-                        scm_type=arguments.get("scm_type", "git"),
-                        scm_url=arguments.get("scm_url"),
-                        scm_branch=arguments.get("scm_branch", "main"),
-                        description=arguments.get("description", ""),
-                    )
-
-                result = "✓ Project created successfully\n\n"
-                result += f"ID: {project.id}\n"
-                result += f"Name: {project.name}\n"
-                if project.scm_url:
-                    result += f"SCM: {project.scm_url}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_project_delete":
-                env, client = get_active_client()
-                project_id = arguments["project_id"]
-
-                async with client:
-                    await client.delete_project(project_id)
-
-                return [
-                    TextContent(
-                        type="text", text=f"Project {project_id} deleted successfully"
-                    )
-                ]
-
-            # Inventories CRUD
-            elif name == "awx_inventory_create":
-                env, client = get_active_client()
-                async with client:
-                    inventory = await client.create_inventory(
-                        name=arguments["name"],
-                        organization=arguments["organization"],
-                        description=arguments.get("description", ""),
-                        variables=arguments.get("variables"),
-                    )
-
-                result = "✓ Inventory created successfully\n\n"
-                result += f"ID: {inventory.id}\n"
-                result += f"Name: {inventory.name}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_inventory_delete":
-                env, client = get_active_client()
-                inventory_id = arguments["inventory_id"]
-
-                async with client:
-                    await client.delete_inventory(inventory_id)
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Inventory {inventory_id} deleted successfully",
-                    )
-                ]
-
-            # Inventory Groups
-            elif name == "awx_inventory_groups_list":
-                env, client = get_active_client()
-                inventory_id = arguments["inventory_id"]
-
-                async with client:
-                    groups = await client.list_inventory_groups(
-                        inventory_id=inventory_id,
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Inventory {inventory_id} Groups ({len(groups)}):\n\n"
-                for group in groups:
-                    result += f"ID: {group['id']} - {group['name']}\n"
-                    if group.get("description"):
-                        result += f"  Description: {group['description']}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_inventory_group_create":
-                env, client = get_active_client()
-                inventory_id = arguments["inventory_id"]
-
-                async with client:
-                    group = await client.create_inventory_group(
-                        inventory_id=inventory_id,
-                        name=arguments["name"],
-                        description=arguments.get("description", ""),
-                        variables=arguments.get("variables"),
-                    )
-
-                result = "✓ Group created successfully\n\n"
-                result += f"ID: {group['id']}\n"
-                result += f"Name: {group['name']}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_inventory_group_delete":
-                env, client = get_active_client()
-                group_id = arguments["group_id"]
-
-                async with client:
-                    await client.delete_inventory_group(group_id)
-
-                return [
-                    TextContent(
-                        type="text", text=f"Group {group_id} deleted successfully"
-                    )
-                ]
-
-            # Inventory Hosts
-            elif name == "awx_inventory_hosts_list":
-                env, client = get_active_client()
-                inventory_id = arguments["inventory_id"]
-
-                async with client:
-                    hosts = await client.list_inventory_hosts(
-                        inventory_id=inventory_id,
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Inventory {inventory_id} Hosts ({len(hosts)}):\n\n"
-                for host in hosts:
-                    result += f"ID: {host['id']} - {host['name']}\n"
-                    if host.get("description"):
-                        result += f"  Description: {host['description']}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_inventory_host_create":
-                env, client = get_active_client()
-                inventory_id = arguments["inventory_id"]
-
-                async with client:
-                    host = await client.create_inventory_host(
-                        inventory_id=inventory_id,
-                        name=arguments["name"],
-                        description=arguments.get("description", ""),
-                        variables=arguments.get("variables"),
-                    )
-
-                result = "✓ Host created successfully\n\n"
-                result += f"ID: {host['id']}\n"
-                result += f"Name: {host['name']}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_inventory_host_delete":
-                env, client = get_active_client()
-                host_id = arguments["host_id"]
-
-                async with client:
-                    await client.delete_inventory_host(host_id)
-
-                return [
-                    TextContent(
-                        type="text", text=f"Host {host_id} deleted successfully"
-                    )
-                ]
-
-            elif name == "awx_templates_list":
-                env, client = get_active_client()
-                async with client:
-                    templates = await client.list_job_templates(
-                        name_filter=arguments.get("filter"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Job Templates ({len(templates)}):\n\n"
-                for tmpl in templates:
-                    result += f"ID: {tmpl.id} - {tmpl.name}\n"
-                    if tmpl.description:
-                        result += f"  Description: {tmpl.description}\n"
-                    result += f"  Playbook: {tmpl.playbook}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_projects_list":
-                env, client = get_active_client()
-                async with client:
-                    projects = await client.list_projects(
-                        name_filter=arguments.get("filter"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Projects ({len(projects)}):\n\n"
-                for proj in projects:
-                    result += f"ID: {proj.id} - {proj.name}\n"
-                    if proj.description:
-                        result += f"  Description: {proj.description}\n"
-                    if proj.scm_url:
-                        result += f"  SCM: {proj.scm_type} - {proj.scm_url}\n"
-                    if proj.scm_branch:
-                        result += f"  Branch: {proj.scm_branch}\n"
-                    result += f"  Status: {proj.status}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_inventories_list":
-                env, client = get_active_client()
-                async with client:
-                    inventories = await client.list_inventories(
-                        name_filter=arguments.get("filter"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Inventories ({len(inventories)}):\n\n"
-                for inv in inventories:
-                    result += f"ID: {inv.id} - {inv.name}\n"
-                    if inv.description:
-                        result += f"  Description: {inv.description}\n"
-                    result += f"  Total Hosts: {inv.total_hosts}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_project_update":
-                env, client = get_active_client()
-                project_id = arguments["project_id"]
-                wait = arguments.get("wait", True)
-
-                async with client:
-                    result_data = await client.update_project(project_id, wait)
-
-                return [
-                    TextContent(
-                        type="text",
-                        text=f"Project {project_id} update initiated. Result: {result_data}",
-                    )
-                ]
-
-            elif name == "awx_job_launch":
-                env, client = get_active_client()
-                template_id = arguments["template_id"]
-
-                # Get template to check allowlist
-                async with client:
-                    template = await client.get_job_template(template_id)
-                    check_allowlist(env, template_id, template.name)
-
-                    job = await client.launch_job(
-                        template_id=template_id,
-                        extra_vars=arguments.get("extra_vars"),
-                        limit=arguments.get("limit"),
-                        tags=arguments.get("tags"),
-                        skip_tags=arguments.get("skip_tags"),
-                    )
-
-                # Audit log
-                logger.info(
-                    "job_launched",
-                    environment=env.name,
-                    template=template.name,
-                    job_id=job.id,
-                )
-
-                result = "✓ Job launched successfully\n\n"
-                result += f"Job ID: {job.id}\n"
-                result += f"Name: {job.name}\n"
-                result += f"Status: {job.status.value}\n"
-                result += f"Playbook: {job.playbook}\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_job_get":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    job = await client.get_job(job_id)
-
-                result = f"Job {job_id} Details:\n\n"
-                result += f"Name: {job.name}\n"
-                result += f"Status: {job.status.value}\n"
-                result += f"Playbook: {job.playbook}\n"
-                if job.started:
-                    result += f"Started: {job.started.isoformat()}\n"
-                if job.finished:
-                    result += f"Finished: {job.finished.isoformat()}\n"
-                if job.elapsed:
-                    result += f"Elapsed: {job.elapsed}s\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_jobs_list":
-                env, client = get_active_client()
-
-                async with client:
-                    jobs = await client.list_jobs(
-                        status=arguments.get("status"),
-                        created_after=arguments.get("created_after"),
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 25),
-                    )
-
-                result = f"Recent Jobs ({len(jobs)}):\n\n"
-                for job in jobs:
-                    result += f"ID: {job.id} - {job.name}\n"
-                    result += f"  Status: {job.status.value}\n"
-                    result += f"  Playbook: {job.playbook}\n"
-                    if job.started:
-                        result += f"  Started: {job.started.isoformat()}\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_job_cancel":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    result_data = await client.cancel_job(job_id)
-
-                return [
-                    TextContent(
-                        type="text", text=f"Job {job_id} cancellation requested"
-                    )
-                ]
-
-            elif name == "awx_job_delete":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    # RestAWXClient has no delete_job; go through rest_client
-                    # like every other delete_* tool (was an AttributeError bug).
-                    await client.delete_job(job_id)
-
-                return [
-                    TextContent(type="text", text=f"Job {job_id} deleted successfully")
-                ]
-
-            elif name == "awx_job_stdout":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-                format = arguments.get("format", "txt")
-                tail_lines = arguments.get("tail_lines")
-
-                async with client:
-                    stdout = await client.get_job_stdout(job_id, format, tail_lines)
-
-                result = f"Job {job_id} Output:\n\n{stdout}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_job_events":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-                failed_only = arguments.get("failed_only", False)
-
-                async with client:
-                    events = await client.get_job_events(
-                        job_id=job_id,
-                        failed_only=failed_only,
-                        page=arguments.get("page", 1),
-                        page_size=arguments.get("page_size", 100),
-                    )
-
-                result = f"Job {job_id} Events ({len(events)}):\n\n"
-                for event in events:
-                    if event.task:
-                        result += f"Task: {event.task}\n"
-                    if event.host:
-                        result += f"  Host: {event.host}\n"
-                    result += f"  Event: {event.event}\n"
-                    result += f"  Failed: {event.failed}\n"
-                    if event.stdout:
-                        result += f"  Output: {event.stdout[:200]}...\n"
-                    result += "\n"
-
-                return [TextContent(type="text", text=result)]
-
-            elif name == "awx_job_failure_summary":
-                env, client = get_active_client()
-                job_id = arguments["job_id"]
-
-                async with client:
-                    # Get job events and stdout
-                    events = await client.get_job_events(job_id, failed_only=True)
-                    stdout = await client.get_job_stdout(job_id, "txt", 500)
-
-                # Analyze failure
-                analysis = analyze_job_failure(job_id, events, stdout)
-
-                result = f"Job {job_id} Failure Analysis:\n\n"
-                result += f"Category: {analysis.category.value}\n"
-                result += f"Failed Events: {analysis.failed_events_count}\n\n"
-
-                if analysis.task_name:
-                    result += f"Failed Task: {analysis.task_name}\n"
-                if analysis.play_name:
-                    result += f"Play: {analysis.play_name}\n"
-                if analysis.host:
-                    result += f"Host: {analysis.host}\n"
-
-                if analysis.error_message:
-                    result += f"\nError Message:\n{analysis.error_message}\n"
-
-                if analysis.suggested_fixes:
-                    result += "\n🔧 Suggested Fixes:\n\n"
-                    for i, fix in enumerate(analysis.suggested_fixes, 1):
-                        result += f"{i}. {fix}\n"
-
-                return [TextContent(type="text", text=result)]
-            elif name == "create_playbook":
-                pb_result = playbook_manager.create_playbook(
-                    name=arguments["name"],
-                    content=arguments["content"],
-                    workspace=arguments.get("workspace"),
-                    overwrite=arguments.get("overwrite", False),
-                )
-                if pb_result["status"] == "created":
-                    result = f"✅ Playbook created: {pb_result['name']}\n"
-                    result += f"Path: {pb_result['path']}\n"
-                    result += f"Plays: {pb_result['plays']}\n\n"
-                    result += f"Preview:\n```yaml\n{pb_result['preview']}\n```"
-                else:
-                    result = f"❌ {pb_result['message']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "validate_playbook":
-                val_result = await playbook_manager.validate_playbook(
-                    playbook=arguments["playbook"],
-                    workspace=arguments.get("workspace"),
-                    inventory=arguments.get("inventory"),
-                )
-                if val_result["status"] == "valid":
-                    result = f"✅ Playbook syntax is valid: {val_result['playbook']}\n"
-                    if val_result.get("output"):
-                        result += f"\n{val_result['output']}"
-                elif val_result["status"] == "invalid":
-                    result = (
-                        f"❌ Playbook has syntax errors: {val_result['playbook']}\n\n"
-                    )
-                    result += f"Errors:\n{val_result['errors']}"
-                else:
-                    result = f"❌ {val_result['message']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "ansible_playbook":
-                exec_result = await playbook_manager.run_playbook(
-                    playbook=arguments["playbook"],
-                    workspace=arguments.get("workspace"),
-                    inventory=arguments.get("inventory"),
-                    extra_vars=arguments.get("extra_vars"),
-                    limit=arguments.get("limit"),
-                    tags=arguments.get("tags"),
-                    skip_tags=arguments.get("skip_tags"),
-                    check_mode=arguments.get("check_mode", False),
-                    verbose=arguments.get("verbose", 0),
-                )
-                if exec_result["status"] == "error":
-                    result = f"❌ {exec_result['message']}"
-                else:
-                    mode = " (CHECK MODE)" if exec_result.get("check_mode") else ""
-                    status_icon = (
-                        "✅" if exec_result["status"] == "successful" else "❌"
-                    )
-                    result = f"{status_icon} Playbook execution{mode}: {exec_result['status']}\n"
-                    result += f"Playbook: {exec_result['playbook']}\n\n"
-                    result += f"Output:\n{exec_result['stdout']}"
-                    if exec_result.get("stderr"):
-                        result += f"\n\nStderr:\n{exec_result['stderr']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "ansible_task":
-                task_result = await playbook_manager.run_adhoc_task(
-                    module=arguments["module"],
-                    args=arguments.get("args"),
-                    hosts=arguments.get("hosts", "localhost"),
-                    inventory=arguments.get("inventory"),
-                    extra_vars=arguments.get("extra_vars"),
-                    connection=arguments.get("connection", "local"),
-                    become=arguments.get("become", False),
-                )
-                if task_result["status"] == "error":
-                    result = f"❌ {task_result['message']}"
-                else:
-                    status_icon = (
-                        "✅" if task_result["status"] == "successful" else "❌"
-                    )
-                    result = f"{status_icon} Ad-hoc task: {task_result['module']} on {task_result['hosts']}\n\n"
-                    result += f"Output:\n{task_result['stdout']}"
-                    if task_result.get("stderr"):
-                        result += f"\n\nStderr:\n{task_result['stderr']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "ansible_role":
-                role_result = await playbook_manager.run_role(
-                    role=arguments["role"],
-                    hosts=arguments.get("hosts", "localhost"),
-                    workspace=arguments.get("workspace"),
-                    inventory=arguments.get("inventory"),
-                    extra_vars=arguments.get("extra_vars"),
-                    connection=arguments.get("connection", "local"),
-                )
-                if role_result["status"] == "error":
-                    result = f"❌ {role_result['message']}"
-                else:
-                    status_icon = (
-                        "✅" if role_result["status"] == "successful" else "❌"
-                    )
-                    result = f"{status_icon} Role execution: {role_result['role']} - {role_result['status']}\n\n"
-                    result += f"Output:\n{role_result['stdout']}"
-                    if role_result.get("stderr"):
-                        result += f"\n\nStderr:\n{role_result['stderr']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "create_role_structure":
-                role_result = playbook_manager.create_role_structure(
-                    name=arguments["name"],
-                    workspace=arguments.get("workspace"),
-                    include_dirs=arguments.get("include_dirs"),
-                )
-                if role_result["status"] == "created":
-                    result = f"✅ Role scaffolded: {role_result['role']}\n"
-                    result += f"Path: {role_result['path']}\n"
-                    result += (
-                        f"Directories: {', '.join(role_result['directories'])}\n\n"
-                    )
-                    result += "Files created:\n"
-                    for f in role_result["files"]:
-                        result += f"  - {f}\n"
-                else:
-                    result = f"❌ {role_result['message']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "list_playbooks":
-                pb_result = playbook_manager.list_playbooks(
-                    workspace=arguments.get("workspace"),
-                )
-                result = (
-                    f"Playbooks in {pb_result['workspace']} ({pb_result['count']}):\n\n"
-                )
-                for pb in pb_result["playbooks"]:
-                    plays_info = f" ({pb['plays']} plays)" if pb.get("plays") else ""
-                    result += f"  📄 {pb['name']}{plays_info} - {pb['size']} bytes\n"
-                if not pb_result["playbooks"]:
-                    result += "  (none found)\n"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "list_roles":
-                roles_result = playbook_manager.list_roles(
-                    workspace=arguments.get("workspace"),
-                )
-                result = f"Roles in {roles_result['workspace']} ({roles_result['count']}):\n\n"
-                for role in roles_result["roles"]:
-                    result += f"  📁 {role['name']} - dirs: {', '.join(role['directories'])}\n"
-                if not roles_result["roles"]:
-                    result += "  (none found)\n"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "ansible_inventory":
-                inv_result = await playbook_manager.ansible_inventory_list(
-                    inventory=arguments.get("inventory", "localhost,"),
-                    workspace=arguments.get("workspace"),
-                )
-                if inv_result["status"] == "success":
-                    data = inv_result["data"]
-                    if isinstance(data, dict):
-                        import json as _json
-
-                        result = f"Inventory: {inv_result['inventory']}\n\n"
-                        result += _json.dumps(data, indent=2, default=str)
-                    else:
-                        result = str(data)
-                else:
-                    result = f"❌ {inv_result['message']}"
-                return [TextContent(type="text", text=result)]
-
-            # ── Project Registry Tool Handlers ──
-
-            elif name == "register_project":
-                reg_result = project_registry.register_project(
-                    name=arguments["name"],
-                    path=arguments["path"],
-                    scm_url=arguments.get("scm_url"),
-                    scm_branch=arguments.get("scm_branch"),
-                    inventory=arguments.get("inventory"),
-                    default_playbook=arguments.get("default_playbook"),
-                    description=arguments.get("description"),
-                    set_default=arguments.get("set_default", False),
-                )
-                if reg_result["status"] == "registered":
-                    proj = reg_result["project"]
-                    result = f"✅ Project registered: {proj['name']}\n"
-                    result += f"Path: {proj['path']}\n"
-                    if proj.get("scm_url"):
-                        result += f"SCM: {proj['scm_url']} ({proj['scm_branch']})\n"
-                    if proj.get("inventory"):
-                        result += f"Inventory: {proj['inventory']}\n"
-                    if proj.get("default_playbook"):
-                        result += f"Default playbook: {proj['default_playbook']}\n"
-                    if reg_result.get("is_default"):
-                        result += "⭐ Set as default project\n"
-                else:
-                    result = f"❌ {reg_result['message']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "unregister_project":
-                unreg_result = project_registry.unregister_project(
-                    name=arguments["name"],
-                )
-                if unreg_result["status"] == "removed":
-                    result = (
-                        f"✅ Project '{unreg_result['project']}' removed from registry"
-                    )
-                else:
-                    result = f"❌ {unreg_result['message']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "list_registered_projects":
-                proj_result = project_registry.list_projects()
-                result = f"Registered Projects ({proj_result['count']}):\n\n"
-                for proj in proj_result["projects"]:
-                    default_marker = " ⭐" if proj.get("is_default") else ""
-                    exists_marker = "" if proj.get("exists") else " ⚠️ (path not found)"
-                    result += f"📂 {proj['name']}{default_marker}{exists_marker}\n"
-                    result += f"   Path: {proj['path']}\n"
-                    if proj.get("scm_url"):
-                        result += f"   SCM: {proj['scm_url']} ({proj.get('scm_branch', 'main')})\n"
-                    if proj.get("inventory"):
-                        result += f"   Inventory: {proj['inventory']}\n"
-                    result += f"   Playbooks: {proj.get('playbook_count', 0)}\n\n"
-                if not proj_result["projects"]:
-                    result += "  (none registered)\n"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "project_playbooks":
-                disc_result = project_registry.discover_playbooks(
-                    project_name=arguments.get("project_name"),
-                    project_path=arguments.get("project_path"),
-                )
-                if disc_result.get("status") == "error":
-                    result = f"❌ {disc_result['message']}"
-                else:
-                    result = f"Project: {disc_result['project_root']}\n\n"
-                    result += f"Playbooks ({disc_result['playbook_count']}):\n"
-                    for pb in disc_result["playbooks"]:
-                        result += f"  📄 {pb['relative_path']} ({pb['plays']} plays, hosts: {pb['hosts']})\n"
-                    if not disc_result["playbooks"]:
-                        result += "  (none found)\n"
-                    result += f"\nRoles ({disc_result['role_count']}):\n"
-                    for role in disc_result["roles"]:
-                        result += (
-                            f"  📁 {role['name']} - {', '.join(role['directories'])}\n"
-                        )
-                    if not disc_result["roles"]:
-                        result += "  (none found)\n"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "project_run_playbook":
-                run_result = await project_registry.project_run_playbook(
-                    playbook=arguments["playbook"],
-                    project_name=arguments.get("project_name"),
-                    extra_vars=arguments.get("extra_vars"),
-                    limit=arguments.get("limit"),
-                    tags=arguments.get("tags"),
-                    skip_tags=arguments.get("skip_tags"),
-                    check_mode=arguments.get("check_mode", False),
-                    verbose=arguments.get("verbose", 0),
-                )
-                if run_result.get("status") == "error":
-                    result = f"❌ {run_result['message']}"
-                else:
-                    mode = " (CHECK MODE)" if run_result.get("check_mode") else ""
-                    status_icon = "✅" if run_result["status"] == "successful" else "❌"
-                    result = f"{status_icon} Project playbook execution{mode}: {run_result['status']}\n"
-                    result += f"Project: {run_result.get('project', 'N/A')}\n"
-                    result += f"Playbook: {run_result['playbook']}\n\n"
-                    result += f"Output:\n{run_result['stdout']}"
-                    if run_result.get("stderr"):
-                        result += f"\n\nStderr:\n{run_result['stderr']}"
-                return [TextContent(type="text", text=result)]
-
-            elif name == "git_push_project":
-                push_result = await project_registry.git_push_project(
-                    project_name=arguments.get("project_name"),
-                    commit_message=arguments.get("commit_message"),
-                    branch=arguments.get("branch"),
-                    add_all=arguments.get("add_all", True),
-                )
-                if push_result["status"] == "pushed":
-                    result = "✅ Changes pushed to git!\n"
-                    result += f"Project: {push_result['project']}\n"
-                    result += f"Branch: {push_result['branch']}\n"
-                    result += f"Commit: {push_result['message']}\n\n"
-                    result += push_result["output"]
-                    result += "\n\n💡 Next: Use 'awx_project_update' to sync AWX with the latest changes."
-                elif push_result["status"] == "no_changes":
-                    result = f"ℹ️ {push_result['message']}"
-                else:
-                    result = f"❌ {push_result['message']}"
-                return [TextContent(type="text", text=result)]
-
+                    result += f"  Organization: {org_name}\n"
+            config = tmpl.get("notification_configuration", {})
+            if config.get("channels"):
+                result += f"  Channels: {', '.join(config['channels'])}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_notification_template_get(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            tmpl = await client.get_notification_template(template_id)
+
+        result = f"Notification Template {template_id}:\n\n"
+        result += f"Name: {tmpl['name']}\n"
+        result += f"Type: {tmpl.get('notification_type', 'unknown')}\n"
+        if tmpl.get("description"):
+            result += f"Description: {tmpl['description']}\n"
+        org_name = tmpl.get("summary_fields", {}).get("organization", {}).get("name")
+        if org_name:
+            result += f"Organization: {org_name}\n"
+
+        config = tmpl.get("notification_configuration", {})
+        result += "\nConfiguration:\n"
+        for key, value in config.items():
+            if key == "token":
+                result += f"  {key}: (encrypted)\n"
             else:
-                return [TextContent(type="text", text=f"Unknown tool: {name}")]
+                result += f"  {key}: {value}\n"
 
+        messages = tmpl.get("messages", {})
+        if messages:
+            result += "\nCustom Messages:\n"
+            for event, msg in messages.items():
+                if event == "workflow_approval":
+                    continue
+                if isinstance(msg, dict) and msg.get("message"):
+                    result += f"  {event}: {msg['message']}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_notification_template_test(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            notif = await client.test_notification_template(template_id)
+
+        result = "Test notification sent\n\n"
+        result += f"Notification ID: {notif.get('id')}\n"
+        result += f"Status: {notif.get('status')}\n"
+        result += f"Type: {notif.get('notification_type')}\n"
+        result += f"Recipients: {notif.get('recipients')}\n"
+        result += f"Subject: {notif.get('subject')}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_notifications_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+
+        async with client:
+            notifications = await client.list_notifications(
+                notification_template_id=arguments.get("notification_template_id"),
+                status=arguments.get("status"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Notifications ({len(notifications)}):\n\n"
+        for n in notifications:
+            tmpl_name = (
+                n.get("summary_fields", {})
+                .get("notification_template", {})
+                .get("name", "Unknown")
+            )
+            result += f"ID: {n['id']} - {tmpl_name}\n"
+            result += f"  Status: {n.get('status')}\n"
+            result += f"  Type: {n.get('notification_type')}\n"
+            result += f"  Created: {n.get('created')}\n"
+            result += f"  Recipients: {n.get('recipients')}\n"
+            if n.get("subject"):
+                result += f"  Subject: {n['subject'][:100]}\n"
+            if n.get("error"):
+                result += f"  Error: {n['error']}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_notification_template_update(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments.pop("template_id")
+
+        async with client:
+            tmpl = await client.update_notification_template(
+                template_id,
+                name=arguments.get("name"),
+                description=arguments.get("description"),
+                notification_configuration=arguments.get("notification_configuration"),
+                messages=arguments.get("messages"),
+            )
+
+        result = f"Notification template {template_id} updated\n\n"
+        result += f"Name: {tmpl['name']}\n"
+        result += f"Type: {tmpl.get('notification_type')}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_notification_template_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            await client.delete_notification_template(template_id)
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Notification template {template_id} deleted successfully",
+            )
+        ]
+
+    async def _h_awx_notification_template_create(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            tmpl = await client.create_notification_template(
+                name=arguments["name"],
+                organization=arguments["organization"],
+                notification_type=arguments["notification_type"],
+                notification_configuration=arguments.get("notification_configuration"),
+                description=arguments.get("description", ""),
+                messages=arguments.get("messages"),
+            )
+
+        result = "Notification template created successfully\n\n"
+        result += f"ID: {tmpl['id']}\n"
+        result += f"Name: {tmpl['name']}\n"
+        result += f"Type: {tmpl.get('notification_type')}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_job_template_notifications_list(
+        arguments: Any,
+    ) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            started = await client.list_job_template_notification_templates(
+                template_id, "started"
+            )
+            success = await client.list_job_template_notification_templates(
+                template_id, "success"
+            )
+            error = await client.list_job_template_notification_templates(
+                template_id, "error"
+            )
+
+        result = f"Job Template {template_id} Notifications:\n\n"
+        for event_name, notifs in [
+            ("Started", started),
+            ("Success", success),
+            ("Error", error),
+        ]:
+            result += f"{event_name} ({len(notifs)}):\n"
+            if notifs:
+                for n in notifs:
+                    result += f"  ID: {n['id']} - {n['name']} ({n.get('notification_type', 'unknown')})\n"
+            else:
+                result += "  (none)\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_job_template_notification_associate(
+        arguments: Any,
+    ) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+        notification_id = arguments["notification_template_id"]
+        event = arguments["event"]
+
+        async with client:
+            await client.associate_job_template_notification(
+                template_id, notification_id, event
+            )
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Notification template {notification_id} associated with job template {template_id} for '{event}' event",
+            )
+        ]
+
+    async def _h_awx_job_template_notification_disassociate(
+        arguments: Any,
+    ) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+        notification_id = arguments["notification_template_id"]
+        event = arguments["event"]
+
+        async with client:
+            await client.disassociate_job_template_notification(
+                template_id, notification_id, event
+            )
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Notification template {notification_id} disassociated from job template {template_id} for '{event}' event",
+            )
+        ]
+
+    async def _h_awx_workflow_template_notifications_list(
+        arguments: Any,
+    ) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            started = await client.list_workflow_template_notification_templates(
+                template_id, "started"
+            )
+            success = await client.list_workflow_template_notification_templates(
+                template_id, "success"
+            )
+            error = await client.list_workflow_template_notification_templates(
+                template_id, "error"
+            )
+
+        result = f"Workflow Job Template {template_id} Notifications:\n\n"
+        for event_name, notifs in [
+            ("Started", started),
+            ("Success", success),
+            ("Error", error),
+        ]:
+            result += f"{event_name} ({len(notifs)}):\n"
+            if notifs:
+                for n in notifs:
+                    result += f"  ID: {n['id']} - {n['name']} ({n.get('notification_type', 'unknown')})\n"
+            else:
+                result += "  (none)\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_workflow_template_notification_associate(
+        arguments: Any,
+    ) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+        notification_id = arguments["notification_template_id"]
+        event = arguments["event"]
+
+        async with client:
+            await client.associate_workflow_template_notification(
+                template_id, notification_id, event
+            )
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Notification template {notification_id} associated with workflow template {template_id} for '{event}' event",
+            )
+        ]
+
+    async def _h_awx_workflow_template_notification_disassociate(
+        arguments: Any,
+    ) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+        notification_id = arguments["notification_template_id"]
+        event = arguments["event"]
+
+        async with client:
+            await client.disassociate_workflow_template_notification(
+                template_id, notification_id, event
+            )
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Notification template {notification_id} disassociated from workflow template {template_id} for '{event}' event",
+            )
+        ]
+
+    # Templates CRUD
+    async def _h_awx_template_create(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            template = await client.create_job_template(
+                name=arguments["name"],
+                inventory=arguments["inventory"],
+                project=arguments["project"],
+                playbook=arguments["playbook"],
+                job_type=arguments.get("job_type", "run"),
+                description=arguments.get("description", ""),
+                extra_vars=arguments.get("extra_vars"),
+                limit=arguments.get("limit"),
+            )
+
+        result = "✓ Job template created successfully\n\n"
+        result += f"ID: {template.id}\n"
+        result += f"Name: {template.name}\n"
+        result += f"Playbook: {template.playbook}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_template_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        async with client:
+            await client.delete_job_template(template_id)
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Job template {template_id} deleted successfully",
+            )
+        ]
+
+    # Projects CRUD
+    async def _h_awx_project_create(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            project = await client.create_project(
+                name=arguments["name"],
+                organization=arguments["organization"],
+                scm_type=arguments.get("scm_type", "git"),
+                scm_url=arguments.get("scm_url"),
+                scm_branch=arguments.get("scm_branch", "main"),
+                description=arguments.get("description", ""),
+            )
+
+        result = "✓ Project created successfully\n\n"
+        result += f"ID: {project.id}\n"
+        result += f"Name: {project.name}\n"
+        if project.scm_url:
+            result += f"SCM: {project.scm_url}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_project_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        project_id = arguments["project_id"]
+
+        async with client:
+            await client.delete_project(project_id)
+
+        return [
+            TextContent(type="text", text=f"Project {project_id} deleted successfully")
+        ]
+
+    # Inventories CRUD
+    async def _h_awx_inventory_create(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            inventory = await client.create_inventory(
+                name=arguments["name"],
+                organization=arguments["organization"],
+                description=arguments.get("description", ""),
+                variables=arguments.get("variables"),
+            )
+
+        result = "✓ Inventory created successfully\n\n"
+        result += f"ID: {inventory.id}\n"
+        result += f"Name: {inventory.name}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_inventory_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        inventory_id = arguments["inventory_id"]
+
+        async with client:
+            await client.delete_inventory(inventory_id)
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Inventory {inventory_id} deleted successfully",
+            )
+        ]
+
+    # Inventory Groups
+    async def _h_awx_inventory_groups_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        inventory_id = arguments["inventory_id"]
+
+        async with client:
+            groups = await client.list_inventory_groups(
+                inventory_id=inventory_id,
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Inventory {inventory_id} Groups ({len(groups)}):\n\n"
+        for group in groups:
+            result += f"ID: {group['id']} - {group['name']}\n"
+            if group.get("description"):
+                result += f"  Description: {group['description']}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_inventory_group_create(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        inventory_id = arguments["inventory_id"]
+
+        async with client:
+            group = await client.create_inventory_group(
+                inventory_id=inventory_id,
+                name=arguments["name"],
+                description=arguments.get("description", ""),
+                variables=arguments.get("variables"),
+            )
+
+        result = "✓ Group created successfully\n\n"
+        result += f"ID: {group['id']}\n"
+        result += f"Name: {group['name']}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_inventory_group_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        group_id = arguments["group_id"]
+
+        async with client:
+            await client.delete_inventory_group(group_id)
+
+        return [TextContent(type="text", text=f"Group {group_id} deleted successfully")]
+
+    # Inventory Hosts
+    async def _h_awx_inventory_hosts_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        inventory_id = arguments["inventory_id"]
+
+        async with client:
+            hosts = await client.list_inventory_hosts(
+                inventory_id=inventory_id,
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Inventory {inventory_id} Hosts ({len(hosts)}):\n\n"
+        for host in hosts:
+            result += f"ID: {host['id']} - {host['name']}\n"
+            if host.get("description"):
+                result += f"  Description: {host['description']}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_inventory_host_create(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        inventory_id = arguments["inventory_id"]
+
+        async with client:
+            host = await client.create_inventory_host(
+                inventory_id=inventory_id,
+                name=arguments["name"],
+                description=arguments.get("description", ""),
+                variables=arguments.get("variables"),
+            )
+
+        result = "✓ Host created successfully\n\n"
+        result += f"ID: {host['id']}\n"
+        result += f"Name: {host['name']}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_inventory_host_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        host_id = arguments["host_id"]
+
+        async with client:
+            await client.delete_inventory_host(host_id)
+
+        return [TextContent(type="text", text=f"Host {host_id} deleted successfully")]
+
+    async def _h_awx_templates_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            templates = await client.list_job_templates(
+                name_filter=arguments.get("filter"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Job Templates ({len(templates)}):\n\n"
+        for tmpl in templates:
+            result += f"ID: {tmpl.id} - {tmpl.name}\n"
+            if tmpl.description:
+                result += f"  Description: {tmpl.description}\n"
+            result += f"  Playbook: {tmpl.playbook}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_projects_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            projects = await client.list_projects(
+                name_filter=arguments.get("filter"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Projects ({len(projects)}):\n\n"
+        for proj in projects:
+            result += f"ID: {proj.id} - {proj.name}\n"
+            if proj.description:
+                result += f"  Description: {proj.description}\n"
+            if proj.scm_url:
+                result += f"  SCM: {proj.scm_type} - {proj.scm_url}\n"
+            if proj.scm_branch:
+                result += f"  Branch: {proj.scm_branch}\n"
+            result += f"  Status: {proj.status}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_inventories_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        async with client:
+            inventories = await client.list_inventories(
+                name_filter=arguments.get("filter"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Inventories ({len(inventories)}):\n\n"
+        for inv in inventories:
+            result += f"ID: {inv.id} - {inv.name}\n"
+            if inv.description:
+                result += f"  Description: {inv.description}\n"
+            result += f"  Total Hosts: {inv.total_hosts}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_project_update(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        project_id = arguments["project_id"]
+        wait = arguments.get("wait", True)
+
+        async with client:
+            result_data = await client.update_project(project_id, wait)
+
+        return [
+            TextContent(
+                type="text",
+                text=f"Project {project_id} update initiated. Result: {result_data}",
+            )
+        ]
+
+    async def _h_awx_job_launch(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        template_id = arguments["template_id"]
+
+        # Get template to check allowlist
+        async with client:
+            template = await client.get_job_template(template_id)
+            check_allowlist(env, template_id, template.name)
+
+            job = await client.launch_job(
+                template_id=template_id,
+                extra_vars=arguments.get("extra_vars"),
+                limit=arguments.get("limit"),
+                tags=arguments.get("tags"),
+                skip_tags=arguments.get("skip_tags"),
+            )
+
+        # Audit log
+        logger.info(
+            "job_launched",
+            environment=env.name,
+            template=template.name,
+            job_id=job.id,
+        )
+
+        result = "✓ Job launched successfully\n\n"
+        result += f"Job ID: {job.id}\n"
+        result += f"Name: {job.name}\n"
+        result += f"Status: {job.status.value}\n"
+        result += f"Playbook: {job.playbook}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_job_get(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            job = await client.get_job(job_id)
+
+        result = f"Job {job_id} Details:\n\n"
+        result += f"Name: {job.name}\n"
+        result += f"Status: {job.status.value}\n"
+        result += f"Playbook: {job.playbook}\n"
+        if job.started:
+            result += f"Started: {job.started.isoformat()}\n"
+        if job.finished:
+            result += f"Finished: {job.finished.isoformat()}\n"
+        if job.elapsed:
+            result += f"Elapsed: {job.elapsed}s\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_jobs_list(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+
+        async with client:
+            jobs = await client.list_jobs(
+                status=arguments.get("status"),
+                created_after=arguments.get("created_after"),
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 25),
+            )
+
+        result = f"Recent Jobs ({len(jobs)}):\n\n"
+        for job in jobs:
+            result += f"ID: {job.id} - {job.name}\n"
+            result += f"  Status: {job.status.value}\n"
+            result += f"  Playbook: {job.playbook}\n"
+            if job.started:
+                result += f"  Started: {job.started.isoformat()}\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_job_cancel(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            await client.cancel_job(job_id)
+
+        return [TextContent(type="text", text=f"Job {job_id} cancellation requested")]
+
+    async def _h_awx_job_delete(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            # RestAWXClient has no delete_job; go through rest_client
+            # like every other delete_* tool (was an AttributeError bug).
+            await client.delete_job(job_id)
+
+        return [TextContent(type="text", text=f"Job {job_id} deleted successfully")]
+
+    async def _h_awx_job_stdout(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+        format = arguments.get("format", "txt")
+        tail_lines = arguments.get("tail_lines")
+
+        async with client:
+            stdout = await client.get_job_stdout(job_id, format, tail_lines)
+
+        result = f"Job {job_id} Output:\n\n{stdout}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_job_events(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+        failed_only = arguments.get("failed_only", False)
+
+        async with client:
+            events = await client.get_job_events(
+                job_id=job_id,
+                failed_only=failed_only,
+                page=arguments.get("page", 1),
+                page_size=arguments.get("page_size", 100),
+            )
+
+        result = f"Job {job_id} Events ({len(events)}):\n\n"
+        for event in events:
+            if event.task:
+                result += f"Task: {event.task}\n"
+            if event.host:
+                result += f"  Host: {event.host}\n"
+            result += f"  Event: {event.event}\n"
+            result += f"  Failed: {event.failed}\n"
+            if event.stdout:
+                result += f"  Output: {event.stdout[:200]}...\n"
+            result += "\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_awx_job_failure_summary(arguments: Any) -> list[TextContent]:
+        env, client = get_active_client()
+        job_id = arguments["job_id"]
+
+        async with client:
+            # Get job events and stdout
+            events = await client.get_job_events(job_id, failed_only=True)
+            stdout = await client.get_job_stdout(job_id, "txt", 500)
+
+        # Analyze failure
+        analysis = analyze_job_failure(job_id, events, stdout)
+
+        result = f"Job {job_id} Failure Analysis:\n\n"
+        result += f"Category: {analysis.category.value}\n"
+        result += f"Failed Events: {analysis.failed_events_count}\n\n"
+
+        if analysis.task_name:
+            result += f"Failed Task: {analysis.task_name}\n"
+        if analysis.play_name:
+            result += f"Play: {analysis.play_name}\n"
+        if analysis.host:
+            result += f"Host: {analysis.host}\n"
+
+        if analysis.error_message:
+            result += f"\nError Message:\n{analysis.error_message}\n"
+
+        if analysis.suggested_fixes:
+            result += "\n🔧 Suggested Fixes:\n\n"
+            for i, fix in enumerate(analysis.suggested_fixes, 1):
+                result += f"{i}. {fix}\n"
+
+        return [TextContent(type="text", text=result)]
+
+    async def _h_create_playbook(arguments: Any) -> list[TextContent]:
+        pb_result = playbook_manager.create_playbook(
+            name=arguments["name"],
+            content=arguments["content"],
+            workspace=arguments.get("workspace"),
+            overwrite=arguments.get("overwrite", False),
+        )
+        if pb_result["status"] == "created":
+            result = f"✅ Playbook created: {pb_result['name']}\n"
+            result += f"Path: {pb_result['path']}\n"
+            result += f"Plays: {pb_result['plays']}\n\n"
+            result += f"Preview:\n```yaml\n{pb_result['preview']}\n```"
+        else:
+            result = f"❌ {pb_result['message']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_validate_playbook(arguments: Any) -> list[TextContent]:
+        val_result = await playbook_manager.validate_playbook(
+            playbook=arguments["playbook"],
+            workspace=arguments.get("workspace"),
+            inventory=arguments.get("inventory"),
+        )
+        if val_result["status"] == "valid":
+            result = f"✅ Playbook syntax is valid: {val_result['playbook']}\n"
+            if val_result.get("output"):
+                result += f"\n{val_result['output']}"
+        elif val_result["status"] == "invalid":
+            result = f"❌ Playbook has syntax errors: {val_result['playbook']}\n\n"
+            result += f"Errors:\n{val_result['errors']}"
+        else:
+            result = f"❌ {val_result['message']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_ansible_playbook(arguments: Any) -> list[TextContent]:
+        exec_result = await playbook_manager.run_playbook(
+            playbook=arguments["playbook"],
+            workspace=arguments.get("workspace"),
+            inventory=arguments.get("inventory"),
+            extra_vars=arguments.get("extra_vars"),
+            limit=arguments.get("limit"),
+            tags=arguments.get("tags"),
+            skip_tags=arguments.get("skip_tags"),
+            check_mode=arguments.get("check_mode", False),
+            verbose=arguments.get("verbose", 0),
+        )
+        if exec_result["status"] == "error":
+            result = f"❌ {exec_result['message']}"
+        else:
+            mode = " (CHECK MODE)" if exec_result.get("check_mode") else ""
+            status_icon = "✅" if exec_result["status"] == "successful" else "❌"
+            result = (
+                f"{status_icon} Playbook execution{mode}: {exec_result['status']}\n"
+            )
+            result += f"Playbook: {exec_result['playbook']}\n\n"
+            result += f"Output:\n{exec_result['stdout']}"
+            if exec_result.get("stderr"):
+                result += f"\n\nStderr:\n{exec_result['stderr']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_ansible_task(arguments: Any) -> list[TextContent]:
+        task_result = await playbook_manager.run_adhoc_task(
+            module=arguments["module"],
+            args=arguments.get("args"),
+            hosts=arguments.get("hosts", "localhost"),
+            inventory=arguments.get("inventory"),
+            extra_vars=arguments.get("extra_vars"),
+            connection=arguments.get("connection", "local"),
+            become=arguments.get("become", False),
+        )
+        if task_result["status"] == "error":
+            result = f"❌ {task_result['message']}"
+        else:
+            status_icon = "✅" if task_result["status"] == "successful" else "❌"
+            result = f"{status_icon} Ad-hoc task: {task_result['module']} on {task_result['hosts']}\n\n"
+            result += f"Output:\n{task_result['stdout']}"
+            if task_result.get("stderr"):
+                result += f"\n\nStderr:\n{task_result['stderr']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_ansible_role(arguments: Any) -> list[TextContent]:
+        role_result = await playbook_manager.run_role(
+            role=arguments["role"],
+            hosts=arguments.get("hosts", "localhost"),
+            workspace=arguments.get("workspace"),
+            inventory=arguments.get("inventory"),
+            extra_vars=arguments.get("extra_vars"),
+            connection=arguments.get("connection", "local"),
+        )
+        if role_result["status"] == "error":
+            result = f"❌ {role_result['message']}"
+        else:
+            status_icon = "✅" if role_result["status"] == "successful" else "❌"
+            result = f"{status_icon} Role execution: {role_result['role']} - {role_result['status']}\n\n"
+            result += f"Output:\n{role_result['stdout']}"
+            if role_result.get("stderr"):
+                result += f"\n\nStderr:\n{role_result['stderr']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_create_role_structure(arguments: Any) -> list[TextContent]:
+        role_result = playbook_manager.create_role_structure(
+            name=arguments["name"],
+            workspace=arguments.get("workspace"),
+            include_dirs=arguments.get("include_dirs"),
+        )
+        if role_result["status"] == "created":
+            result = f"✅ Role scaffolded: {role_result['role']}\n"
+            result += f"Path: {role_result['path']}\n"
+            result += f"Directories: {', '.join(role_result['directories'])}\n\n"
+            result += "Files created:\n"
+            for f in role_result["files"]:
+                result += f"  - {f}\n"
+        else:
+            result = f"❌ {role_result['message']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_list_playbooks(arguments: Any) -> list[TextContent]:
+        pb_result = playbook_manager.list_playbooks(
+            workspace=arguments.get("workspace"),
+        )
+        result = f"Playbooks in {pb_result['workspace']} ({pb_result['count']}):\n\n"
+        for pb in pb_result["playbooks"]:
+            plays_info = f" ({pb['plays']} plays)" if pb.get("plays") else ""
+            result += f"  📄 {pb['name']}{plays_info} - {pb['size']} bytes\n"
+        if not pb_result["playbooks"]:
+            result += "  (none found)\n"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_list_roles(arguments: Any) -> list[TextContent]:
+        roles_result = playbook_manager.list_roles(
+            workspace=arguments.get("workspace"),
+        )
+        result = f"Roles in {roles_result['workspace']} ({roles_result['count']}):\n\n"
+        for role in roles_result["roles"]:
+            result += f"  📁 {role['name']} - dirs: {', '.join(role['directories'])}\n"
+        if not roles_result["roles"]:
+            result += "  (none found)\n"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_ansible_inventory(arguments: Any) -> list[TextContent]:
+        inv_result = await playbook_manager.ansible_inventory_list(
+            inventory=arguments.get("inventory", "localhost,"),
+            workspace=arguments.get("workspace"),
+        )
+        if inv_result["status"] == "success":
+            data = inv_result["data"]
+            if isinstance(data, dict):
+                import json as _json
+
+                result = f"Inventory: {inv_result['inventory']}\n\n"
+                result += _json.dumps(data, indent=2, default=str)
+            else:
+                result = str(data)
+        else:
+            result = f"❌ {inv_result['message']}"
+        return [TextContent(type="text", text=result)]
+
+    # ── Project Registry Tool Handlers ──
+    async def _h_register_project(arguments: Any) -> list[TextContent]:
+        reg_result = project_registry.register_project(
+            name=arguments["name"],
+            path=arguments["path"],
+            scm_url=arguments.get("scm_url"),
+            scm_branch=arguments.get("scm_branch"),
+            inventory=arguments.get("inventory"),
+            default_playbook=arguments.get("default_playbook"),
+            description=arguments.get("description"),
+            set_default=arguments.get("set_default", False),
+        )
+        if reg_result["status"] == "registered":
+            proj = reg_result["project"]
+            result = f"✅ Project registered: {proj['name']}\n"
+            result += f"Path: {proj['path']}\n"
+            if proj.get("scm_url"):
+                result += f"SCM: {proj['scm_url']} ({proj['scm_branch']})\n"
+            if proj.get("inventory"):
+                result += f"Inventory: {proj['inventory']}\n"
+            if proj.get("default_playbook"):
+                result += f"Default playbook: {proj['default_playbook']}\n"
+            if reg_result.get("is_default"):
+                result += "⭐ Set as default project\n"
+        else:
+            result = f"❌ {reg_result['message']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_unregister_project(arguments: Any) -> list[TextContent]:
+        unreg_result = project_registry.unregister_project(
+            name=arguments["name"],
+        )
+        if unreg_result["status"] == "removed":
+            result = f"✅ Project '{unreg_result['project']}' removed from registry"
+        else:
+            result = f"❌ {unreg_result['message']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_list_registered_projects(arguments: Any) -> list[TextContent]:
+        proj_result = project_registry.list_projects()
+        result = f"Registered Projects ({proj_result['count']}):\n\n"
+        for proj in proj_result["projects"]:
+            default_marker = " ⭐" if proj.get("is_default") else ""
+            exists_marker = "" if proj.get("exists") else " ⚠️ (path not found)"
+            result += f"📂 {proj['name']}{default_marker}{exists_marker}\n"
+            result += f"   Path: {proj['path']}\n"
+            if proj.get("scm_url"):
+                result += (
+                    f"   SCM: {proj['scm_url']} ({proj.get('scm_branch', 'main')})\n"
+                )
+            if proj.get("inventory"):
+                result += f"   Inventory: {proj['inventory']}\n"
+            result += f"   Playbooks: {proj.get('playbook_count', 0)}\n\n"
+        if not proj_result["projects"]:
+            result += "  (none registered)\n"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_project_playbooks(arguments: Any) -> list[TextContent]:
+        disc_result = project_registry.discover_playbooks(
+            project_name=arguments.get("project_name"),
+            project_path=arguments.get("project_path"),
+        )
+        if disc_result.get("status") == "error":
+            result = f"❌ {disc_result['message']}"
+        else:
+            result = f"Project: {disc_result['project_root']}\n\n"
+            result += f"Playbooks ({disc_result['playbook_count']}):\n"
+            for pb in disc_result["playbooks"]:
+                result += f"  📄 {pb['relative_path']} ({pb['plays']} plays, hosts: {pb['hosts']})\n"
+            if not disc_result["playbooks"]:
+                result += "  (none found)\n"
+            result += f"\nRoles ({disc_result['role_count']}):\n"
+            for role in disc_result["roles"]:
+                result += f"  📁 {role['name']} - {', '.join(role['directories'])}\n"
+            if not disc_result["roles"]:
+                result += "  (none found)\n"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_project_run_playbook(arguments: Any) -> list[TextContent]:
+        run_result = await project_registry.project_run_playbook(
+            playbook=arguments["playbook"],
+            project_name=arguments.get("project_name"),
+            extra_vars=arguments.get("extra_vars"),
+            limit=arguments.get("limit"),
+            tags=arguments.get("tags"),
+            skip_tags=arguments.get("skip_tags"),
+            check_mode=arguments.get("check_mode", False),
+            verbose=arguments.get("verbose", 0),
+        )
+        if run_result.get("status") == "error":
+            result = f"❌ {run_result['message']}"
+        else:
+            mode = " (CHECK MODE)" if run_result.get("check_mode") else ""
+            status_icon = "✅" if run_result["status"] == "successful" else "❌"
+            result = f"{status_icon} Project playbook execution{mode}: {run_result['status']}\n"
+            result += f"Project: {run_result.get('project', 'N/A')}\n"
+            result += f"Playbook: {run_result['playbook']}\n\n"
+            result += f"Output:\n{run_result['stdout']}"
+            if run_result.get("stderr"):
+                result += f"\n\nStderr:\n{run_result['stderr']}"
+        return [TextContent(type="text", text=result)]
+
+    async def _h_git_push_project(arguments: Any) -> list[TextContent]:
+        push_result = await project_registry.git_push_project(
+            project_name=arguments.get("project_name"),
+            commit_message=arguments.get("commit_message"),
+            branch=arguments.get("branch"),
+            add_all=arguments.get("add_all", True),
+        )
+        if push_result["status"] == "pushed":
+            result = "✅ Changes pushed to git!\n"
+            result += f"Project: {push_result['project']}\n"
+            result += f"Branch: {push_result['branch']}\n"
+            result += f"Commit: {push_result['message']}\n\n"
+            result += push_result["output"]
+            result += "\n\n💡 Next: Use 'awx_project_update' to sync AWX with the latest changes."
+        elif push_result["status"] == "no_changes":
+            result = f"ℹ️ {push_result['message']}"
+        else:
+            result = f"❌ {push_result['message']}"
+        return [TextContent(type="text", text=result)]
+
+    _HANDLERS.update(
+        {
+            "env_list": _h_env_list,
+            "env_set_active": _h_env_set_active,
+            "env_get_active": _h_env_get_active,
+            "env_test_connection": _h_env_test_connection,
+            "awx_system_info": _h_awx_system_info,
+            "awx_organizations_list": _h_awx_organizations_list,
+            "awx_organization_get": _h_awx_organization_get,
+            "awx_credentials_list": _h_awx_credentials_list,
+            "awx_credential_types_list": _h_awx_credential_types_list,
+            "awx_credential_create": _h_awx_credential_create,
+            "awx_credential_delete": _h_awx_credential_delete,
+            "awx_notification_templates_list": _h_awx_notification_templates_list,
+            "awx_notification_template_get": _h_awx_notification_template_get,
+            "awx_notification_template_test": _h_awx_notification_template_test,
+            "awx_notifications_list": _h_awx_notifications_list,
+            "awx_notification_template_update": _h_awx_notification_template_update,
+            "awx_notification_template_delete": _h_awx_notification_template_delete,
+            "awx_notification_template_create": _h_awx_notification_template_create,
+            "awx_job_template_notifications_list": _h_awx_job_template_notifications_list,
+            "awx_job_template_notification_associate": _h_awx_job_template_notification_associate,
+            "awx_job_template_notification_disassociate": _h_awx_job_template_notification_disassociate,
+            "awx_workflow_template_notifications_list": _h_awx_workflow_template_notifications_list,
+            "awx_workflow_template_notification_associate": _h_awx_workflow_template_notification_associate,
+            "awx_workflow_template_notification_disassociate": _h_awx_workflow_template_notification_disassociate,
+            "awx_template_create": _h_awx_template_create,
+            "awx_template_delete": _h_awx_template_delete,
+            "awx_project_create": _h_awx_project_create,
+            "awx_project_delete": _h_awx_project_delete,
+            "awx_inventory_create": _h_awx_inventory_create,
+            "awx_inventory_delete": _h_awx_inventory_delete,
+            "awx_inventory_groups_list": _h_awx_inventory_groups_list,
+            "awx_inventory_group_create": _h_awx_inventory_group_create,
+            "awx_inventory_group_delete": _h_awx_inventory_group_delete,
+            "awx_inventory_hosts_list": _h_awx_inventory_hosts_list,
+            "awx_inventory_host_create": _h_awx_inventory_host_create,
+            "awx_inventory_host_delete": _h_awx_inventory_host_delete,
+            "awx_templates_list": _h_awx_templates_list,
+            "awx_projects_list": _h_awx_projects_list,
+            "awx_inventories_list": _h_awx_inventories_list,
+            "awx_project_update": _h_awx_project_update,
+            "awx_job_launch": _h_awx_job_launch,
+            "awx_job_get": _h_awx_job_get,
+            "awx_jobs_list": _h_awx_jobs_list,
+            "awx_job_cancel": _h_awx_job_cancel,
+            "awx_job_delete": _h_awx_job_delete,
+            "awx_job_stdout": _h_awx_job_stdout,
+            "awx_job_events": _h_awx_job_events,
+            "awx_job_failure_summary": _h_awx_job_failure_summary,
+            "create_playbook": _h_create_playbook,
+            "validate_playbook": _h_validate_playbook,
+            "ansible_playbook": _h_ansible_playbook,
+            "ansible_task": _h_ansible_task,
+            "ansible_role": _h_ansible_role,
+            "create_role_structure": _h_create_role_structure,
+            "list_playbooks": _h_list_playbooks,
+            "list_roles": _h_list_roles,
+            "ansible_inventory": _h_ansible_inventory,
+            "register_project": _h_register_project,
+            "unregister_project": _h_unregister_project,
+            "list_registered_projects": _h_list_registered_projects,
+            "project_playbooks": _h_project_playbooks,
+            "project_run_playbook": _h_project_run_playbook,
+            "git_push_project": _h_git_push_project,
+        }
+    )
+
+    @mcp_server.call_tool()
+    async def call_tool(name: str, arguments: Any) -> list[TextContent]:
+        """Handle tool calls by dispatching to the registered handler."""
+        try:
+            # Redact credential inputs / extra_vars etc. before logging.
+            logger.info("tool_call", tool=name, arguments=redact_sensitive(arguments))
+            handler = _HANDLERS.get(name)
+            if handler is None:
+                return [TextContent(type="text", text=f"Unknown tool: {name}")]
+            return await handler(arguments)
         except KeyError as e:
             # A required argument was missing from the tool call.
             logger.error("tool_error", tool=name, error=f"missing argument {e}")

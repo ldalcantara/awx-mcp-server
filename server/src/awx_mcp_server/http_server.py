@@ -717,7 +717,7 @@ def create_app(mcp_server: Server) -> FastAPI:
     # Helper function to get AWX client
     async def get_client(tenant_id: str):
         """Get AWX client for tenant."""
-        from awx_mcp_server.clients import CompositeAWXClient
+        from awx_mcp_server.clients import RestAWXClient
         from awx_mcp_server.domain import CredentialType
 
         config_manager = ConfigManager(tenant_id=tenant_id)
@@ -736,7 +736,7 @@ def create_app(mcp_server: Server) -> FastAPI:
             )
             is_token = True
 
-        return CompositeAWXClient(env, username, secret, is_token)
+        return RestAWXClient(env, username, secret, is_token)
 
     # AWX REST API Endpoints
 

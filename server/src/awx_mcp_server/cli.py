@@ -11,7 +11,7 @@ from rich.json import JSON
 from awx_mcp_server import __version__
 from awx_mcp_server.http_server import start_http_server
 from awx_mcp_server.storage import ConfigManager, CredentialStore
-from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import CredentialType
 
 console = Console()
@@ -57,7 +57,7 @@ async def get_client():
         )
         is_token = True
 
-    return CompositeAWXClient(env, username, secret, is_token)
+    return RestAWXClient(env, username, secret, is_token)
 
 
 # Environment Management Commands

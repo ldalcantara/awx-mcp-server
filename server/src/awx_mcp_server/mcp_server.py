@@ -14,7 +14,7 @@ from mcp.types import (
     Tool,
 )
 
-from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import (
     AllowlistViolationError,
     AWXAuthenticationError,
@@ -61,7 +61,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
     # a warm HTTP connection pool instead of paying a fresh TCP+TLS handshake
     # per call. Cached clients are marked ``persistent`` so the per-handler
     # ``async with client`` blocks don't close them.
-    client_cache: OrderedDict[tuple, CompositeAWXClient] = OrderedDict()
+    client_cache: OrderedDict[tuple, RestAWXClient] = OrderedDict()
     client_cache_max = 8
     # Hold references to eviction-close tasks: a bare create_task() result can
     # be garbage-collected before it runs and its exception is never observed.
@@ -77,7 +77,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         username: Optional[str],
         secret: str,
         is_token: bool,
-    ) -> CompositeAWXClient:
+    ) -> RestAWXClient:
         # env_id is excluded from the key: the env-var fallback mints a fresh
         # uuid on every call, which would defeat the cache.
         key = (
@@ -89,7 +89,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         )
         client = client_cache.get(key)
         if client is None:
-            client = CompositeAWXClient(env, username, secret, is_token)
+            client = RestAWXClient(env, username, secret, is_token)
             client.persistent = True
             while len(client_cache) >= client_cache_max:
                 _, evicted = client_cache.popitem(last=False)
@@ -106,7 +106,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             client_cache.move_to_end(key)
         return client
 
-    def get_active_client() -> tuple[EnvironmentConfig, CompositeAWXClient]:
+    def get_active_client() -> tuple[EnvironmentConfig, RestAWXClient]:
         """Get client for active environment, falling back to environment variables if no config exists."""
         try:
             # Try to get stored environment
@@ -432,7 +432,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         job_id = arguments["job_id"]
 
         async with client:
-            await client.rest_client.delete_workflow_job(job_id)
+            await client.delete_workflow_job(job_id)
 
         return [
             TextContent(type="text", text=f"Workflow job {job_id} deleted successfully")
@@ -443,7 +443,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         job_id = arguments["job_id"]
 
         async with client:
-            wf_job = await client.rest_client.relaunch_workflow_job(job_id)
+            wf_job = await client.relaunch_workflow_job(job_id)
 
         result = "Workflow job relaunched successfully\n\n"
         result += f"New Workflow Job ID: {wf_job.id}\n"
@@ -457,7 +457,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         template_id = arguments["template_id"]
 
         async with client:
-            nodes = await client.rest_client.get_workflow_job_template_nodes(
+            nodes = await client.get_workflow_job_template_nodes(
                 template_id,
                 page=arguments.get("page", 1),
                 page_size=arguments.get("page_size", 100),
@@ -491,9 +491,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         template_id = arguments["template_id"]
 
         async with client:
-            survey = await client.rest_client.get_workflow_job_template_survey(
-                template_id
-            )
+            survey = await client.get_workflow_job_template_survey(template_id)
 
         spec = survey.get("spec", [])
         if not spec:
@@ -527,7 +525,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         template_id = arguments["template_id"]
 
         async with client:
-            schedules = await client.rest_client.list_workflow_job_template_schedules(
+            schedules = await client.list_workflow_job_template_schedules(
                 template_id,
                 page=arguments.get("page", 1),
                 page_size=arguments.get("page_size", 25),
@@ -555,9 +553,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
         template_id = arguments["template_id"]
 
         async with client:
-            config = await client.rest_client.get_workflow_job_template_launch_config(
-                template_id
-            )
+            config = await client.get_workflow_job_template_launch_config(template_id)
 
         result = f"Workflow Template {template_id} Launch Configuration:\n\n"
         result += f"Can Start Without User Input: {config.get('can_start_without_user_input', False)}\n"
@@ -2211,7 +2207,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                         )
                         is_token = True
 
-                    client = CompositeAWXClient(env, username, secret, is_token)
+                    client = RestAWXClient(env, username, secret, is_token)
                 else:
                     env, client = get_active_client()
 
@@ -2238,22 +2234,22 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
 
                 async with client:
                     if info_type == "config":
-                        data = await client.rest_client.get_config()
+                        data = await client.get_config()
                         result = "AWX System Configuration:\n\n"
                         for key, value in data.items():
                             result += f"{key}: {value}\n"
                     elif info_type == "dashboard":
-                        data = await client.rest_client.get_dashboard()
+                        data = await client.get_dashboard()
                         result = "AWX Dashboard:\n\n"
                         for key, value in data.items():
                             result += f"{key}: {value}\n"
                     elif info_type == "settings":
-                        data = await client.rest_client.get_settings()
+                        data = await client.get_settings()
                         result = "AWX Settings:\n\n"
                         for key, value in data.items():
                             result += f"{key}: {value}\n"
                     elif info_type == "me":
-                        data = await client.rest_client.get_me()
+                        data = await client.get_me()
                         result = "Current User Info:\n\n"
                         result += f"ID: {data.get('id')}\n"
                         result += f"Username: {data.get('username')}\n"
@@ -2268,7 +2264,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_organizations_list":
                 env, client = get_active_client()
                 async with client:
-                    orgs = await client.rest_client.list_organizations(
+                    orgs = await client.list_organizations(
                         name_filter=arguments.get("filter"),
                         page=arguments.get("page", 1),
                         page_size=arguments.get("page_size", 25),
@@ -2288,7 +2284,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 org_id = arguments["org_id"]
 
                 async with client:
-                    org = await client.rest_client.get_organization(org_id)
+                    org = await client.get_organization(org_id)
 
                 result = f"Organization {org_id}:\n\n"
                 result += f"Name: {org['name']}\n"
@@ -2302,7 +2298,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_credentials_list":
                 env, client = get_active_client()
                 async with client:
-                    creds = await client.rest_client.list_credentials(
+                    creds = await client.list_credentials(
                         name_filter=arguments.get("filter"),
                         page=arguments.get("page", 1),
                         page_size=arguments.get("page_size", 25),
@@ -2321,7 +2317,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_credential_types_list":
                 env, client = get_active_client()
                 async with client:
-                    types = await client.rest_client.list_credential_types(
+                    types = await client.list_credential_types(
                         page=arguments.get("page", 1),
                         page_size=arguments.get("page_size", 25),
                     )
@@ -2338,7 +2334,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_credential_create":
                 env, client = get_active_client()
                 async with client:
-                    cred = await client.rest_client.create_credential(
+                    cred = await client.create_credential(
                         name=arguments["name"],
                         credential_type=arguments["credential_type"],
                         organization=arguments["organization"],
@@ -2357,7 +2353,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 cred_id = arguments["credential_id"]
 
                 async with client:
-                    await client.rest_client.delete_credential(cred_id)
+                    await client.delete_credential(cred_id)
 
                 return [
                     TextContent(
@@ -2369,7 +2365,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_notification_templates_list":
                 env, client = get_active_client()
                 async with client:
-                    templates = await client.rest_client.list_notification_templates(
+                    templates = await client.list_notification_templates(
                         name_filter=arguments.get("filter"),
                         page=arguments.get("page", 1),
                         page_size=arguments.get("page_size", 25),
@@ -2401,9 +2397,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 template_id = arguments["template_id"]
 
                 async with client:
-                    tmpl = await client.rest_client.get_notification_template(
-                        template_id
-                    )
+                    tmpl = await client.get_notification_template(template_id)
 
                 result = f"Notification Template {template_id}:\n\n"
                 result += f"Name: {tmpl['name']}\n"
@@ -2440,9 +2434,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 template_id = arguments["template_id"]
 
                 async with client:
-                    notif = await client.rest_client.test_notification_template(
-                        template_id
-                    )
+                    notif = await client.test_notification_template(template_id)
 
                 result = "Test notification sent\n\n"
                 result += f"Notification ID: {notif.get('id')}\n"
@@ -2457,7 +2449,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 env, client = get_active_client()
 
                 async with client:
-                    notifications = await client.rest_client.list_notifications(
+                    notifications = await client.list_notifications(
                         notification_template_id=arguments.get(
                             "notification_template_id"
                         ),
@@ -2491,7 +2483,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 template_id = arguments.pop("template_id")
 
                 async with client:
-                    tmpl = await client.rest_client.update_notification_template(
+                    tmpl = await client.update_notification_template(
                         template_id,
                         name=arguments.get("name"),
                         description=arguments.get("description"),
@@ -2512,7 +2504,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 template_id = arguments["template_id"]
 
                 async with client:
-                    await client.rest_client.delete_notification_template(template_id)
+                    await client.delete_notification_template(template_id)
 
                 return [
                     TextContent(
@@ -2524,7 +2516,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_notification_template_create":
                 env, client = get_active_client()
                 async with client:
-                    tmpl = await client.rest_client.create_notification_template(
+                    tmpl = await client.create_notification_template(
                         name=arguments["name"],
                         organization=arguments["organization"],
                         notification_type=arguments["notification_type"],
@@ -2547,13 +2539,13 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 template_id = arguments["template_id"]
 
                 async with client:
-                    started = await client.rest_client.list_job_template_notification_templates(
+                    started = await client.list_job_template_notification_templates(
                         template_id, "started"
                     )
-                    success = await client.rest_client.list_job_template_notification_templates(
+                    success = await client.list_job_template_notification_templates(
                         template_id, "success"
                     )
-                    error = await client.rest_client.list_job_template_notification_templates(
+                    error = await client.list_job_template_notification_templates(
                         template_id, "error"
                     )
 
@@ -2580,7 +2572,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 event = arguments["event"]
 
                 async with client:
-                    await client.rest_client.associate_job_template_notification(
+                    await client.associate_job_template_notification(
                         template_id, notification_id, event
                     )
 
@@ -2598,7 +2590,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 event = arguments["event"]
 
                 async with client:
-                    await client.rest_client.disassociate_job_template_notification(
+                    await client.disassociate_job_template_notification(
                         template_id, notification_id, event
                     )
 
@@ -2614,13 +2606,17 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 template_id = arguments["template_id"]
 
                 async with client:
-                    started = await client.rest_client.list_workflow_template_notification_templates(
-                        template_id, "started"
+                    started = (
+                        await client.list_workflow_template_notification_templates(
+                            template_id, "started"
+                        )
                     )
-                    success = await client.rest_client.list_workflow_template_notification_templates(
-                        template_id, "success"
+                    success = (
+                        await client.list_workflow_template_notification_templates(
+                            template_id, "success"
+                        )
                     )
-                    error = await client.rest_client.list_workflow_template_notification_templates(
+                    error = await client.list_workflow_template_notification_templates(
                         template_id, "error"
                     )
 
@@ -2647,7 +2643,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 event = arguments["event"]
 
                 async with client:
-                    await client.rest_client.associate_workflow_template_notification(
+                    await client.associate_workflow_template_notification(
                         template_id, notification_id, event
                     )
 
@@ -2665,7 +2661,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 event = arguments["event"]
 
                 async with client:
-                    await client.rest_client.disassociate_workflow_template_notification(
+                    await client.disassociate_workflow_template_notification(
                         template_id, notification_id, event
                     )
 
@@ -2680,7 +2676,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_template_create":
                 env, client = get_active_client()
                 async with client:
-                    template = await client.rest_client.create_job_template(
+                    template = await client.create_job_template(
                         name=arguments["name"],
                         inventory=arguments["inventory"],
                         project=arguments["project"],
@@ -2703,7 +2699,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 template_id = arguments["template_id"]
 
                 async with client:
-                    await client.rest_client.delete_job_template(template_id)
+                    await client.delete_job_template(template_id)
 
                 return [
                     TextContent(
@@ -2716,7 +2712,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_project_create":
                 env, client = get_active_client()
                 async with client:
-                    project = await client.rest_client.create_project(
+                    project = await client.create_project(
                         name=arguments["name"],
                         organization=arguments["organization"],
                         scm_type=arguments.get("scm_type", "git"),
@@ -2738,7 +2734,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 project_id = arguments["project_id"]
 
                 async with client:
-                    await client.rest_client.delete_project(project_id)
+                    await client.delete_project(project_id)
 
                 return [
                     TextContent(
@@ -2750,7 +2746,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             elif name == "awx_inventory_create":
                 env, client = get_active_client()
                 async with client:
-                    inventory = await client.rest_client.create_inventory(
+                    inventory = await client.create_inventory(
                         name=arguments["name"],
                         organization=arguments["organization"],
                         description=arguments.get("description", ""),
@@ -2768,7 +2764,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 inventory_id = arguments["inventory_id"]
 
                 async with client:
-                    await client.rest_client.delete_inventory(inventory_id)
+                    await client.delete_inventory(inventory_id)
 
                 return [
                     TextContent(
@@ -2783,7 +2779,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 inventory_id = arguments["inventory_id"]
 
                 async with client:
-                    groups = await client.rest_client.list_inventory_groups(
+                    groups = await client.list_inventory_groups(
                         inventory_id=inventory_id,
                         page=arguments.get("page", 1),
                         page_size=arguments.get("page_size", 25),
@@ -2803,7 +2799,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 inventory_id = arguments["inventory_id"]
 
                 async with client:
-                    group = await client.rest_client.create_inventory_group(
+                    group = await client.create_inventory_group(
                         inventory_id=inventory_id,
                         name=arguments["name"],
                         description=arguments.get("description", ""),
@@ -2821,7 +2817,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 group_id = arguments["group_id"]
 
                 async with client:
-                    await client.rest_client.delete_inventory_group(group_id)
+                    await client.delete_inventory_group(group_id)
 
                 return [
                     TextContent(
@@ -2835,7 +2831,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 inventory_id = arguments["inventory_id"]
 
                 async with client:
-                    hosts = await client.rest_client.list_inventory_hosts(
+                    hosts = await client.list_inventory_hosts(
                         inventory_id=inventory_id,
                         page=arguments.get("page", 1),
                         page_size=arguments.get("page_size", 25),
@@ -2855,7 +2851,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 inventory_id = arguments["inventory_id"]
 
                 async with client:
-                    host = await client.rest_client.create_inventory_host(
+                    host = await client.create_inventory_host(
                         inventory_id=inventory_id,
                         name=arguments["name"],
                         description=arguments.get("description", ""),
@@ -2873,7 +2869,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 host_id = arguments["host_id"]
 
                 async with client:
-                    await client.rest_client.delete_inventory_host(host_id)
+                    await client.delete_inventory_host(host_id)
 
                 return [
                     TextContent(
@@ -3050,9 +3046,9 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
                 job_id = arguments["job_id"]
 
                 async with client:
-                    # CompositeAWXClient has no delete_job; go through rest_client
+                    # RestAWXClient has no delete_job; go through rest_client
                     # like every other delete_* tool (was an AttributeError bug).
-                    await client.rest_client.delete_job(job_id)
+                    await client.delete_job(job_id)
 
                 return [
                     TextContent(type="text", text=f"Job {job_id} deleted successfully")

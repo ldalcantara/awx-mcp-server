@@ -22,7 +22,7 @@ class AWXClient(ABC):
     @staticmethod
     def _parse_extra_vars(extra_vars: Any) -> dict[str, Any]:
         """Normalize AWX's ``extra_vars`` (a dict, a JSON string, or empty) to a
-        dict. Shared so the REST and awxkit clients agree on the shape."""
+        dict, so callers always see the same shape."""
         if isinstance(extra_vars, dict):
             return extra_vars
         if isinstance(extra_vars, str) and extra_vars.strip():

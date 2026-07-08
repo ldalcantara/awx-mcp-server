@@ -333,7 +333,7 @@ credentials = await vault.get_credentials(
 )
 
 # Use credentials
-awx_client = CompositeAWXClient(
+awx_client = RestAWXClient(
     base_url=credentials.awx_url,
     token=credentials.awx_token
 )

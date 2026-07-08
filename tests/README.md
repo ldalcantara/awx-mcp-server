@@ -242,7 +242,7 @@ Follow the pattern from existing tests:
 """Test AWX MCP functionality - description."""
 import asyncio
 from awx_mcp_server.storage import ConfigManager, CredentialStore
-from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import CredentialType
 
 async def test_your_feature():
@@ -265,7 +265,7 @@ async def test_your_feature():
         is_token = True
     
     # Test
-    client = CompositeAWXClient(env, username, secret, is_token)
+    client = RestAWXClient(env, username, secret, is_token)
     async with client:
         # Your test code here
         pass

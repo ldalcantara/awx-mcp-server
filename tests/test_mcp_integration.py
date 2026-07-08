@@ -12,7 +12,7 @@ This test suite covers all MCP server functionality:
 import asyncio
 import pytest
 from awx_mcp_server.storage import ConfigManager, CredentialStore
-from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import CredentialType
 
 
@@ -41,7 +41,7 @@ async def awx_client():
         except Exception:
             pytest.skip("No credentials found for active environment")
 
-    client = CompositeAWXClient(env, username, secret, is_token)
+    client = RestAWXClient(env, username, secret, is_token)
     async with client:
         if not await client.test_connection():
             pytest.skip("Cannot connect to AWX server")

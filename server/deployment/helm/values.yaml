@@ -78,10 +78,19 @@ config:
   serverPort: 8000
   logLevel: "info"
   enableMetrics: true
+  # AWX connection (env-var mode). Set awx.baseUrl to have the container talk to
+  # AWX directly; leave it empty to configure a stored environment out-of-band.
+  awx:
+    baseUrl: ""        # e.g. https://awx.example.com  (empty => AWX env not injected)
+    username: ""       # set for password auth; leave empty to use awxToken
+    verifySsl: true
+    platform: "awx"    # "awx" or "aap"
 
 # Secret values (should be overridden in production)
 secrets:
   adminToken: ""  # REQUIRED: override at install time (--set adminToken=...) with a strong secret
+  awxToken: ""    # AWX OAuth2 token (preferred). Used when config.awx.username is empty.
+  awxPassword: "" # AWX password (paired with config.awx.username) when not using a token.
 
 # Monitoring
 prometheus:

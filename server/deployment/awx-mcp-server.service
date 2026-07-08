@@ -10,8 +10,13 @@ Group=awxmcp
 WorkingDirectory=/opt/awx-mcp-server
 Environment="PATH=/opt/awx-mcp-server/venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
+# AWX connection + ADMIN_TOKEN live here (AWX_BASE_URL, AWX_TOKEN or
+# AWX_USERNAME/AWX_PASSWORD, AWX_VERIFY_SSL, ADMIN_TOKEN). The leading '-' makes
+# the file optional so the unit still starts when config is provided another way.
+EnvironmentFile=-/etc/awx-mcp-server/awx-mcp-server.env
 
-ExecStart=/opt/awx-mcp-server/venv/bin/python -m awx_mcp.cli serve-http --host 0.0.0.0 --port 8000
+# Use the installed console script with the real 'start' subcommand.
+ExecStart=/opt/awx-mcp-server/venv/bin/awx-mcp-server start --host 0.0.0.0 --port 8000
 
 # Security
 NoNewPrivileges=true

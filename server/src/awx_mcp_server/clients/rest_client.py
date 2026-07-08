@@ -203,15 +203,22 @@ class RestAWXClient(AWXClient):
         params: Optional[dict[str, Any]] = None,
         max_items: int = 1000,
     ) -> list[dict[str, Any]]:
-        """GET a paginated list endpoint and collect every page.
+        """GET a paginated list endpoint.
 
-        When the listing starts at page 1 (the default), the request asks for
-        the server's maximum page size so a full listing takes ~5 round-trips
-        instead of ~40 at the 25-item default. An explicit ``page`` > 1 keeps
-        the caller's ``page_size``, since changing it would shift page offsets.
+        Pagination is honored, not bypassed: when the caller specifies a
+        ``page_size`` it is treated as a real limit — at most that many rows are
+        returned (one page's worth) — so a tool asking for 25 rows gets 25, not
+        the entire table dumped into the model's context. Only when NO
+        ``page_size`` is given (internal full scans) does this collect every page
+        at the server's max page size, bounded by ``max_items``.
         """
         params = dict(params or {})
-        if params.get("page", 1) in (None, 1):
+        requested_size = params.get("page_size")
+        if requested_size:
+            size = int(requested_size)
+            max_items = min(max_items, size)
+            params["page_size"] = min(_MAX_PAGE_SIZE, size)
+        elif params.get("page", 1) in (None, 1):
             params["page"] = 1
             params["page_size"] = min(_MAX_PAGE_SIZE, max_items)
         data = await self._request("GET", endpoint, params=params)

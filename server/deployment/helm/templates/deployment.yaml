@@ -51,6 +51,29 @@ spec:
             secretKeyRef:
               name: {{ include "awx-mcp-server.fullname" . }}
               key: admin-token
+        {{- if .Values.config.awx.baseUrl }}
+        - name: AWX_BASE_URL
+          value: {{ .Values.config.awx.baseUrl | quote }}
+        - name: AWX_VERIFY_SSL
+          value: {{ .Values.config.awx.verifySsl | quote }}
+        - name: AWX_PLATFORM
+          value: {{ .Values.config.awx.platform | quote }}
+        {{- if .Values.config.awx.username }}
+        - name: AWX_USERNAME
+          value: {{ .Values.config.awx.username | quote }}
+        - name: AWX_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "awx-mcp-server.fullname" . }}
+              key: awx-password
+        {{- else }}
+        - name: AWX_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "awx-mcp-server.fullname" . }}
+              key: awx-token
+        {{- end }}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /health

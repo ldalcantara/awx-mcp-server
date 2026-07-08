@@ -68,9 +68,10 @@ async def test_list_follows_pagination():
     assert calls["n"] == 2
 
 
-async def test_full_listing_requests_max_page_size():
-    """A listing that starts at page 1 must ask for AWX's max page size (200),
-    so collecting everything costs ~5 round-trips instead of ~40."""
+async def test_page_size_is_honored_as_a_limit():
+    """A caller's page_size must be honored as a real cap, not silently
+    overridden to the server max. A list tool asking for 25 rows requests 25 —
+    so it returns one page, not the whole table dumped into the model's context."""
     client = _client()
     seen = {}
 
@@ -79,8 +80,23 @@ async def test_full_listing_requests_max_page_size():
         return _response(200, json.dumps({"results": [], "next": None}).encode())
 
     client.client.request = serve
-    await client.list_credentials()
+    await client.list_credentials(page_size=25)
     assert seen["page"] == 1
+    assert seen["page_size"] == 25
+
+
+async def test_unbounded_scan_uses_max_page_size():
+    """When NO page_size is supplied (internal full scans that call _get_all
+    directly), the fetch stays efficient by requesting AWX's max page size."""
+    client = _client()
+    seen = {}
+
+    async def serve(method, endpoint, **kwargs):
+        seen.update(kwargs.get("params") or {})
+        return _response(200, json.dumps({"results": [], "next": None}).encode())
+
+    client.client.request = serve
+    await client._get_all("/api/v2/credentials/")
     assert seen["page_size"] == 200
 
 

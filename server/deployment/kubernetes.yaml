@@ -13,6 +13,11 @@ data:
   SERVER_PORT: "8000"
   LOG_LEVEL: "info"
   ENABLE_METRICS: "true"
+  # AWX connection (env-var mode). Set AWX_BASE_URL so the container can reach AWX;
+  # without it the server has no target and every tool errors.
+  AWX_BASE_URL: ""            # e.g. https://awx.example.com
+  AWX_VERIFY_SSL: "true"
+  AWX_PLATFORM: "awx"         # "awx" or "aap"
 ---
 apiVersion: v1
 kind: Secret
@@ -22,6 +27,9 @@ metadata:
 type: Opaque
 stringData:
   admin-token: ""  # REQUIRED: set to a strong secret before deploying (base64 in a real Secret)
+  # Provide ONE of the following AWX credentials (token preferred):
+  awx-token: ""    # AWX OAuth2 token
+  awx-password: "" # AWX password (also set AWX_USERNAME in the Deployment env)
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -68,6 +76,28 @@ spec:
             secretKeyRef:
               name: awx-mcp-secrets
               key: admin-token
+        - name: AWX_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: awx-mcp-config
+              key: AWX_BASE_URL
+        - name: AWX_VERIFY_SSL
+          valueFrom:
+            configMapKeyRef:
+              name: awx-mcp-config
+              key: AWX_VERIFY_SSL
+        - name: AWX_PLATFORM
+          valueFrom:
+            configMapKeyRef:
+              name: awx-mcp-config
+              key: AWX_PLATFORM
+        # AWX auth: token preferred. For password auth, set AWX_USERNAME here and
+        # populate awx-password in the Secret.
+        - name: AWX_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: awx-mcp-secrets
+              key: awx-token
         resources:
           requests:
             memory: "256Mi"

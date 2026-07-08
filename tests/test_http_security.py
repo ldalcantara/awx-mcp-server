@@ -54,6 +54,41 @@ def test_mcp_invalid_key_rejected(client):
     assert r.status_code == 401
 
 
+def test_mcp_per_tenant_server_isolation(monkeypatch):
+    """Each authenticated tenant must get its OWN mcp server so stored AWX
+    credentials are resolved per tenant — a single global server would let one
+    tenant's key execute against another tenant's configured AWX. The
+    default/anonymous bucket reuses the process-global server (tenant None)."""
+    monkeypatch.delenv("MCP_ALLOW_ANONYMOUS", raising=False)
+    hs.API_KEYS.clear()
+
+    import awx_mcp_server.mcp_server as ms
+
+    real = create_mcp_server
+    built: list = []
+
+    def spy(tenant_id=None):
+        built.append(tenant_id)
+        return real(tenant_id=tenant_id)
+
+    monkeypatch.setattr(ms, "create_mcp_server", spy)
+
+    # Global server (tenant None) is built directly, so it is NOT counted.
+    app = hs.create_app(real())
+    c = TestClient(app)
+
+    ka = _add_key("keyA", "tenantA")
+    kb = _add_key("keyB", "tenantB")
+
+    assert c.post("/mcp", json=INIT, headers={"X-API-Key": ka}).status_code == 200
+    assert c.post("/mcp", json=INIT, headers={"X-API-Key": kb}).status_code == 200
+    # Second call for tenantA must reuse the cached per-tenant server.
+    assert c.post("/mcp", json=INIT, headers={"X-API-Key": ka}).status_code == 200
+
+    # Exactly one fresh server per distinct tenant, none for the global bucket.
+    assert built == ["tenantA", "tenantB"]
+
+
 def test_mcp_valid_key_ok(client):
     key = _add_key()
     r = client.post("/mcp", json=INIT, headers={"X-API-Key": key})

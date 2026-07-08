@@ -330,6 +330,25 @@ def create_app(mcp_server: Server) -> FastAPI:
         redoc_url="/redoc" if _docs_enabled else None,
     )
 
+    # Per-tenant MCP server instances: each authenticated tenant must resolve its
+    # OWN stored AWX environment/credentials. create_mcp_server() closes its tool
+    # handlers over a tenant-scoped ConfigManager/CredentialStore, so reusing a
+    # single global server (tenant_id=None) for every request lets one tenant's
+    # API key execute against whichever tenant last configured the server. The
+    # default/anonymous bucket keeps the process-global server (tenant_id=None),
+    # so single-tenant and env-var deployments are unchanged.
+    from awx_mcp_server.mcp_server import create_mcp_server as _create_mcp_server
+
+    _tenant_servers: dict[Optional[str], Server] = {None: mcp_server}
+
+    def _server_for_tenant(tenant_id: Optional[str]) -> Server:
+        key = None if tenant_id in (None, "", "anonymous", "default") else tenant_id
+        srv = _tenant_servers.get(key)
+        if srv is None:
+            srv = _create_mcp_server(tenant_id=key)
+            _tenant_servers[key] = srv
+        return srv
+
     # CORS: explicit allowlist from CORS_ORIGINS (comma-separated). Never pair a
     # wildcard with credentials. Empty -> no cross-origin access (same-origin).
     _cors_origins = [
@@ -528,9 +547,11 @@ def create_app(mcp_server: Server) -> FastAPI:
             ctx_token = set_awx_override(awx_config)
 
             try:
-                # Process MCP message through the server
-                # The mcp_server handles: initialize, tools/list, tools/call, resources/list, etc.
-                result = await process_mcp_message(mcp_server, message, tenant_id)
+                # Process MCP message through the tenant-scoped server so stored
+                # AWX credentials are resolved for THIS tenant, not a global one.
+                result = await process_mcp_message(
+                    _server_for_tenant(tenant_id), message, tenant_id
+                )
 
                 # Record metrics only after the outcome is known, so the
                 # success/error split in Prometheus reflects reality.

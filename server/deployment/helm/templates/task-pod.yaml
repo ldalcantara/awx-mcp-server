@@ -23,9 +23,9 @@ data:
         tenant_id = os.environ.get('TENANT_ID')
         
         # Import AWX client
-        from awx_mcp_shared.storage import ConfigManager, CredentialStore
-        from awx_mcp_shared.clients import CompositeAWXClient
-        from awx_mcp_shared.domain import CredentialType
+        from awx_mcp_server.storage import ConfigManager, CredentialStore
+        from awx_mcp_server.clients import CompositeAWXClient
+        from awx_mcp_server.domain import CredentialType
         
         # Get client
         config_manager = ConfigManager(tenant_id=tenant_id)
@@ -74,8 +74,8 @@ data:
         elif task_type == "job_events":
             events = await client.get_job_events(
                 task_params.get("job_id"),
-                task_params.get("page", 1),
-                task_params.get("page_size", 50)
+                page=task_params.get("page", 1),
+                page_size=task_params.get("page_size", 50)
             )
             result = {
                 "events": [

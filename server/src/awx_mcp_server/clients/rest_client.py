@@ -75,6 +75,11 @@ class RestAWXClient(AWXClient):
             verify=config.verify_ssl,
             timeout=30.0,
         )
+        # When True (set by a client cache that owns this instance), leaving an
+        # ``async with`` block keeps the HTTP connection pool open so later tool
+        # calls reuse warm connections instead of re-handshaking. The cache
+        # closes it explicitly via aclose() on eviction.
+        self.persistent = False
 
     async def __aenter__(self) -> "RestAWXClient":
         """Async context manager entry."""
@@ -82,6 +87,11 @@ class RestAWXClient(AWXClient):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
+        if not self.persistent:
+            await self.client.aclose()
+
+    async def aclose(self) -> None:
+        """Close the underlying HTTP resources regardless of ``persistent``."""
         await self.client.aclose()
 
     async def _request(

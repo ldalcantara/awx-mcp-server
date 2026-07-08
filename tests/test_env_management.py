@@ -89,7 +89,7 @@ async def test_env_management():
     print("\n[Test 4] Test Connection to AWX")
     print("-" * 70)
 
-    from awx_mcp_server.clients import CompositeAWXClient
+    from awx_mcp_server.clients import RestAWXClient
 
     # Determine credential type
     try:
@@ -103,7 +103,7 @@ async def test_env_management():
         )
         is_token = True
 
-    client = CompositeAWXClient(active_env, username, secret, is_token)
+    client = RestAWXClient(active_env, username, secret, is_token)
 
     async with client:
         print(f"Testing connection to {active_env.base_url}...")

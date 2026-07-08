@@ -1,6 +1,6 @@
 """Tests for connection reuse across tool calls.
 
-Building a fresh CompositeAWXClient (and with it a fresh httpx.AsyncClient)
+Building a fresh RestAWXClient (and with it a fresh httpx.AsyncClient)
 on every tool call costs a full TCP+TLS handshake per call. The server now
 caches one client per resolved (URL, credentials) and marks it ``persistent``
 so the per-handler ``async with client`` blocks don't close it.
@@ -10,7 +10,7 @@ import uuid
 
 from unittest.mock import AsyncMock
 
-from awx_mcp_server.clients.composite_client import CompositeAWXClient
+from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import EnvironmentConfig, NoActiveEnvironmentError
 from awx_mcp_server.http_server import process_mcp_message
 from awx_mcp_server.mcp_server import create_mcp_server
@@ -27,25 +27,25 @@ def _env():
 
 async def test_context_exit_closes_default_client():
     """Without the persistent flag, leaving async-with closes the pool."""
-    client = CompositeAWXClient(_env(), "u", "p")
+    client = RestAWXClient(_env(), "u", "p")
     async with client:
         pass
-    assert client.rest_client.client.is_closed
+    assert client.client.is_closed
 
 
 async def test_context_exit_keeps_persistent_client_open():
     """A cache-owned client survives async-with; aclose() really closes it."""
-    client = CompositeAWXClient(_env(), "u", "p")
+    client = RestAWXClient(_env(), "u", "p")
     client.persistent = True
     async with client:
         pass
-    assert not client.rest_client.client.is_closed
+    assert not client.client.is_closed
     await client.aclose()
-    assert client.rest_client.client.is_closed
+    assert client.client.is_closed
 
 
 class _FakeClient:
-    """Async-context-manager stand-in for CompositeAWXClient."""
+    """Async-context-manager stand-in for RestAWXClient."""
 
     def __init__(self):
         self.list_workflow_job_templates = AsyncMock(return_value=[])
@@ -94,7 +94,7 @@ async def test_tool_calls_reuse_cached_client(monkeypatch):
         built.append(client)
         return client
 
-    monkeypatch.setattr("awx_mcp_server.mcp_server.CompositeAWXClient", factory)
+    monkeypatch.setattr("awx_mcp_server.mcp_server.RestAWXClient", factory)
     await _call(server)
     await _call(server)
 
@@ -113,7 +113,7 @@ async def test_distinct_credentials_get_distinct_clients(monkeypatch):
         built.append(client)
         return client
 
-    monkeypatch.setattr("awx_mcp_server.mcp_server.CompositeAWXClient", factory)
+    monkeypatch.setattr("awx_mcp_server.mcp_server.RestAWXClient", factory)
     await _call(server)
     monkeypatch.setenv("AWX_PASSWORD", "rotated")
     await _call(server)

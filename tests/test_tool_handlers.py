@@ -8,7 +8,7 @@ is called with the right arguments and that the response text is formatted as
 expected.
 
 The client is injected by forcing ``get_active_client`` down its env-var
-fallback (ConfigManager raises) and patching ``CompositeAWXClient`` to return a
+fallback (ConfigManager raises) and patching ``RestAWXClient`` to return a
 fake. Workflow tools call ``client.<method>`` (domain objects); notification
 tools call ``client.rest_client.<method>`` (dicts).
 """
@@ -42,12 +42,15 @@ def assert_ok(text: str) -> None:
 
 
 class FakeClient:
-    """Async-context-manager stand-in for CompositeAWXClient."""
+    """Async-context-manager stand-in for RestAWXClient."""
 
     def __init__(self, methods=None, rest=None):
-        for name, fn in (methods or {}).items():
+        # The REST client is used directly now, so both the former "direct"
+        # methods and the former ``rest_client.*`` methods live on the client.
+        for name, fn in {**(methods or {}), **(rest or {})}.items():
             setattr(self, name, fn)
-        self.rest_client = SimpleNamespace(**(rest or {}))
+        # Legacy alias: some assertions still read client.rest_client.<m>.
+        self.rest_client = self
 
     async def __aenter__(self):
         return self
@@ -76,7 +79,7 @@ def invoke(monkeypatch):
 
     async def _invoke(name, arguments, client):
         monkeypatch.setattr(
-            "awx_mcp_server.mcp_server.CompositeAWXClient", lambda *a, **k: client
+            "awx_mcp_server.mcp_server.RestAWXClient", lambda *a, **k: client
         )
         msg = {
             "jsonrpc": "2.0",
@@ -212,7 +215,7 @@ async def test_job_template_notification_associate(invoke):
 
 async def test_job_delete_uses_rest_client(invoke):
     """Regression: awx_job_delete must call client.rest_client.delete_job
-    (CompositeAWXClient has no delete_job — was a runtime AttributeError)."""
+    (RestAWXClient has no delete_job — was a runtime AttributeError)."""
     rest = {"delete_job": AsyncMock(return_value=None)}
     client = FakeClient(rest=rest)
     text = await invoke("awx_job_delete", {"job_id": 99}, client)

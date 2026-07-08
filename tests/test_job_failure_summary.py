@@ -3,7 +3,7 @@
 import asyncio
 import sys
 from awx_mcp_server.storage import ConfigManager, CredentialStore
-from awx_mcp_server.clients import CompositeAWXClient
+from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import CredentialType
 from awx_mcp_server.utils import analyze_job_failure
 
@@ -34,7 +34,7 @@ async def test_job_failure_summary():
     print(f"✓ Using {'token' if is_token else 'password'} authentication")
 
     # Create client
-    client = CompositeAWXClient(env, username, secret, is_token)
+    client = RestAWXClient(env, username, secret, is_token)
 
     async with client:
         print("\nTesting connection...")

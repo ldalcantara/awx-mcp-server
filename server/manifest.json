@@ -7,17 +7,17 @@
   "description": "Control AWX/Ansible Tower through the Model Context Protocol. Manage infrastructure automation with natural language.",
   "long_description": "AWX MCP Server enables AI agents and assistants to interact with AWX/Ansible Tower instances through the Model Context Protocol. Execute playbooks, manage inventories, monitor jobs, and automate infrastructure tasks using natural language with GitHub Copilot, Claude, Cursor, or any MCP-compatible client.",
   "author": {
-    "name": "SurgeX Labs",
-    "email": "support@surgexlabs.com",
-    "url": "https://github.com/SurgeX-Labs"
+    "name": "ldalcantara",
+    "email": "ldalcantara@gmail.com",
+    "url": "https://github.com/ldalcantara"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/SurgeX-Labs/awx-mcp-server"
+    "url": "https://github.com/ldalcantara/awx-mcp-server"
   },
-  "homepage": "https://github.com/SurgeX-Labs/awx-mcp-server",
-  "documentation": "https://github.com/SurgeX-Labs/awx-mcp-server/blob/main/README.md",
-  "support": "https://github.com/SurgeX-Labs/awx-mcp-server/issues",
+  "homepage": "https://github.com/ldalcantara/awx-mcp-server",
+  "documentation": "https://github.com/ldalcantara/awx-mcp-server/blob/main/README.md",
+  "support": "https://github.com/ldalcantara/awx-mcp-server/issues",
   "icon": "icon.png",
   "server": {
     "type": "python",

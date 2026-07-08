@@ -4,7 +4,7 @@ replicaCount: 2
 image:
   repository: awx-mcp-server
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: ""  # empty -> defaults to Chart appVersion (a pinned tag, not "latest")
 
 imagePullSecrets: []
 nameOverride: ""
@@ -24,6 +24,8 @@ podSecurityContext:
   runAsNonRoot: true
   runAsUser: 1000
   fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
   allowPrivilegeEscalation: false
@@ -31,6 +33,8 @@ securityContext:
   capabilities:
     drop:
     - ALL
+  seccompProfile:
+    type: RuntimeDefault
 
 service:
   type: ClusterIP
@@ -72,6 +76,11 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+# With replicaCount 2 + HPA, keep at least one pod up through node drains
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
 
 config:
   serverHost: "0.0.0.0"

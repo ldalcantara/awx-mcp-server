@@ -54,7 +54,7 @@ spec:
     spec:
       containers:
       - name: awx-mcp-server
-        image: awx-mcp-server:latest
+        image: awx-mcp-server:1.3.0  # pin a real tag, not :latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
@@ -125,6 +125,8 @@ spec:
           capabilities:
             drop:
             - ALL
+          seccompProfile:
+            type: RuntimeDefault
 ---
 apiVersion: v1
 kind: Service
@@ -149,9 +151,9 @@ metadata:
   name: awx-mcp-server
   namespace: awx-mcp
   annotations:
-    kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  ingressClassName: nginx
   tls:
   - hosts:
     - awx-mcp.example.com

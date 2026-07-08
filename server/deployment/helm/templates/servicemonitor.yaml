@@ -1,0 +1,16 @@
+{{- if and .Values.prometheus.enabled .Values.prometheus.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "awx-mcp-server.fullname" . }}
+  labels:
+    {{- include "awx-mcp-server.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "awx-mcp-server.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /prometheus-metrics
+      interval: {{ .Values.prometheus.serviceMonitor.interval }}
+{{- end }}

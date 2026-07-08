@@ -135,9 +135,14 @@ class TaskPodManager:
             ),
         )
 
-        # Create the Job
+        # Create the Job. The kubernetes client is synchronous — run it in a
+        # worker thread so it doesn't block the event loop.
         try:
-            self.batch_v1.create_namespaced_job(namespace=self.namespace, body=job)
+            await asyncio.to_thread(
+                self.batch_v1.create_namespaced_job,
+                namespace=self.namespace,
+                body=job,
+            )
         except ApiException as e:
             raise RuntimeError(f"Failed to create task pod: {e}")
 
@@ -158,9 +163,12 @@ class TaskPodManager:
             if asyncio.get_event_loop().time() - start_time > timeout:
                 raise TimeoutError(f"Task pod {job_name} timed out")
 
-            # Get Job status
+            # Get Job status (sync kubernetes client → worker thread, so the
+            # poll loop never blocks the event loop for other requests)
             try:
-                job = self.batch_v1.read_namespaced_job(job_name, self.namespace)
+                job = await asyncio.to_thread(
+                    self.batch_v1.read_namespaced_job, job_name, self.namespace
+                )
             except ApiException:
                 await asyncio.sleep(1)
                 continue
@@ -168,15 +176,19 @@ class TaskPodManager:
             # Check if Job completed
             if job.status.succeeded:
                 # Get pod logs
-                pods = self.core_v1.list_namespaced_pod(
-                    namespace=self.namespace, label_selector=f"job-name={job_name}"
+                pods = await asyncio.to_thread(
+                    self.core_v1.list_namespaced_pod,
+                    namespace=self.namespace,
+                    label_selector=f"job-name={job_name}",
                 )
 
                 if pods.items:
                     pod_name = pods.items[0].metadata.name
                     try:
-                        logs = self.core_v1.read_namespaced_pod_log(
-                            name=pod_name, namespace=self.namespace
+                        logs = await asyncio.to_thread(
+                            self.core_v1.read_namespaced_pod_log,
+                            name=pod_name,
+                            namespace=self.namespace,
                         )
                         # Parse JSON result from logs
                         return json.loads(logs)
@@ -187,16 +199,20 @@ class TaskPodManager:
 
             elif job.status.failed:
                 # Get pod logs for failure details
-                pods = self.core_v1.list_namespaced_pod(
-                    namespace=self.namespace, label_selector=f"job-name={job_name}"
+                pods = await asyncio.to_thread(
+                    self.core_v1.list_namespaced_pod,
+                    namespace=self.namespace,
+                    label_selector=f"job-name={job_name}",
                 )
 
                 error_msg = "Task pod failed"
                 if pods.items:
                     pod_name = pods.items[0].metadata.name
                     try:
-                        logs = self.core_v1.read_namespaced_pod_log(
-                            name=pod_name, namespace=self.namespace
+                        logs = await asyncio.to_thread(
+                            self.core_v1.read_namespaced_pod_log,
+                            name=pod_name,
+                            namespace=self.namespace,
                         )
                         error_msg = f"Task pod failed: {logs}"
                     except Exception:

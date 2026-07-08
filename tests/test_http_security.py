@@ -175,6 +175,32 @@ def test_ssrf_guard_allows_listed_host(monkeypatch):
     assert r.status_code == 200
 
 
+def test_ssrf_guard_enforces_scheme_and_port(monkeypatch):
+    """The allowlist matches scheme + host + port, not hostname alone — a bare
+    host entry permits https only, and a host:port entry pins the port."""
+    monkeypatch.setenv(
+        "AWX_ALLOWED_HOSTS", "awx.internal.example, awx2.internal.example:8443"
+    )
+
+    def check(url):
+        try:
+            hs._validate_awx_base_url(url)
+            return True
+        except Exception:
+            return False
+
+    # bare host: https any port ok; http (scheme downgrade) rejected
+    assert check("https://awx.internal.example/")
+    assert check("https://awx.internal.example:8080/")
+    assert not check("http://awx.internal.example/")
+    # host:port entry: only that port, only https
+    assert check("https://awx2.internal.example:8443/")
+    assert not check("https://awx2.internal.example/")  # default 443 != 8443
+    assert not check("https://awx2.internal.example:9999/")
+    # unlisted host rejected
+    assert not check("https://evil.example/")
+
+
 # --- Robustness / observability follow-ups ---------------------------------
 
 

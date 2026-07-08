@@ -2,16 +2,16 @@ apiVersion: v2
 name: awx-mcp-server
 description: A Helm chart for AWX MCP Server
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 1.3.0
+appVersion: "1.3.0"
 keywords:
   - awx
   - ansible
   - mcp
   - automation
-home: https://github.com/your-org/awx-mcp
+home: https://github.com/ldalcantara/awx-mcp-server
 sources:
-  - https://github.com/your-org/awx-mcp
+  - https://github.com/ldalcantara/awx-mcp-server
 maintainers:
-  - name: AWX MCP Team
-    email: team@example.com
+  - name: ldalcantara
+    url: https://github.com/ldalcantara

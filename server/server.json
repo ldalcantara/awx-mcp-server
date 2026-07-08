@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ldalcantara/awx-mcp-server",
   "displayName": "AWX MCP Server",
-  "description": "Control AWX/Ansible Tower through natural language - 49 tools for automation",
+  "description": "Control AWX/Ansible Tower through natural language - 76 tools for automation",
   "icon": "icon.png",
   "repository": {
     "url": "https://github.com/ldalcantara/awx-mcp-server",

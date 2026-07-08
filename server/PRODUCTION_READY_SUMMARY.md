@@ -36,7 +36,7 @@
 ## 📊 Production Features Checklist
 
 ### Core Functionality
-- ✅ **49 AWX/Ansible Tools** - Complete API coverage
+- ✅ **76 AWX/Ansible Tools** - Broad API coverage
 - ✅ **Multi-Environment Support** - Configure multiple AWX instances
 - ✅ **Environment Switching** - Easy switching in Copilot Chat
 - ✅ **Multiple Authentication** - Token or Username/Password

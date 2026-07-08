@@ -21,7 +21,7 @@ The AWX MCP Server is **PRODUCTION READY** for the following use cases:
 ## 🎯 Production Features
 
 ### Core Functionality
-- ✅ **49 AWX/Ansible Tools** - Complete coverage of AWX API
+- ✅ **76 AWX/Ansible Tools** - Broad coverage of the AWX API
 - ✅ **Multi-Environment Support** - Local, Dev, Staging, Production
 - ✅ **Environment Switching** - Easy switching in Copilot Chat
 - ✅ **Multiple Authentication Methods** - Token, Username/Password

@@ -60,9 +60,15 @@ def _require_admin(authorization: Optional[str]) -> None:
 
 
 def _validate_awx_base_url(url: Optional[str]) -> None:
-    """SSRF guard: only honor a client-supplied AWX base URL if its host is
-    explicitly allowlisted via AWX_ALLOWED_HOSTS (comma-separated). Fail closed
-    so an attacker can't point the server at internal/metadata endpoints."""
+    """SSRF guard: only honor a client-supplied AWX base URL if it matches the
+    AWX_ALLOWED_HOSTS allowlist (comma-separated). Fail closed so an attacker
+    can't point the server at internal/metadata endpoints.
+
+    Matching covers scheme and port, not just hostname — otherwise an allowed
+    host could be reached on any port, or forced to plain http. Entry forms:
+    ``host`` (https only, any port), ``host:port`` (https only, that port), or
+    ``scheme://host[:port]`` (exact scheme, port defaulting per scheme).
+    """
     if not url:
         return
     allowed = [
@@ -70,15 +76,52 @@ def _validate_awx_base_url(url: Optional[str]) -> None:
         for h in os.environ.get("AWX_ALLOWED_HOSTS", "").split(",")
         if h.strip()
     ]
-    host = urlparse(url).hostname or ""
-    if not allowed or host not in allowed:
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "Client-supplied AWX base URL is not permitted. Set "
-                "AWX_ALLOWED_HOSTS to allow specific hosts."
-            ),
-        )
+    denied = HTTPException(
+        status_code=403,
+        detail=(
+            "Client-supplied AWX base URL is not permitted. Set "
+            "AWX_ALLOWED_HOSTS to allow specific hosts."
+        ),
+    )
+    parsed = urlparse(url)
+    scheme = (parsed.scheme or "").lower()
+    host = parsed.hostname or ""
+    if scheme not in ("http", "https") or not host or not allowed:
+        raise denied
+    port = parsed.port or (443 if scheme == "https" else 80)
+
+    for entry in allowed:
+        if "://" in entry:
+            e = urlparse(entry)
+            e_scheme = (e.scheme or "").lower()
+            e_port = e.port or (443 if e_scheme == "https" else 80)
+            if scheme == e_scheme and host == (e.hostname or "") and port == e_port:
+                return
+        elif ":" in entry:
+            e_host, _, e_port = entry.rpartition(":")
+            if (
+                scheme == "https"
+                and host == e_host
+                and e_port.isdigit()
+                and port == int(e_port)
+            ):
+                return
+        elif scheme == "https" and host == entry:
+            return
+    raise denied
+
+
+def _lookup_api_key(candidate: Optional[str]) -> Optional[dict[str, Any]]:
+    """Constant-time API-key lookup: compare the candidate against every stored
+    key with secrets.compare_digest so response timing doesn't leak how close a
+    guess is (a plain dict membership test short-circuits on the first bytes)."""
+    if not candidate:
+        return None
+    found: Optional[dict[str, Any]] = None
+    for key, info in API_KEYS.items():
+        if secrets.compare_digest(candidate, key):
+            found = info
+    return found
 
 
 class APIKeyCreate(BaseModel):
@@ -105,10 +148,9 @@ def verify_api_key(x_api_key: Optional[str] = Header(None)) -> dict[str, Any]:
     A missing or unknown key both yield 401 (not 422), so authenticated
     endpoints reject unauthenticated callers consistently.
     """
-    if not x_api_key or x_api_key not in API_KEYS:
+    key_info = _lookup_api_key(x_api_key)
+    if key_info is None:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
-
-    key_info = API_KEYS[x_api_key]
 
     # Check expiration
     if key_info.get("expires_at"):
@@ -126,8 +168,8 @@ def verify_api_key_optional(x_api_key: Optional[str] = Header(None)) -> dict[str
     For enterprise deployments, make this required.
     """
     if x_api_key:
-        if x_api_key in API_KEYS:
-            key_info = API_KEYS[x_api_key]
+        key_info = _lookup_api_key(x_api_key)
+        if key_info is not None:
             # Check expiration
             if key_info.get("expires_at"):
                 expires_at = datetime.fromisoformat(key_info["expires_at"])
@@ -298,22 +340,21 @@ async def process_mcp_message(
             "result": result,
         }
 
-    except Exception as e:
-        logger.error(
+    except Exception:
+        # Full detail (message + traceback) goes to the server log only; the
+        # client gets a generic error so internal paths, AWX responses, and
+        # config fragments are not leaked in the JSON-RPC body.
+        logger.exception(
             "process_mcp_message_error",
             method=method,
-            error=str(e),
             tenant_id=tenant_id,
         )
-        import traceback
-
-        traceback.print_exc()
         return {
             "jsonrpc": "2.0",
             "id": msg_id,
             "error": {
                 "code": -32603,
-                "message": f"Internal error: {str(e)}",
+                "message": "Internal error while processing the request.",
             },
         }
 
@@ -381,8 +422,9 @@ def create_app(mcp_server: Server) -> FastAPI:
         # unvalidated header value into the metrics label set.
         raw_key = request.headers.get("X-API-Key")
         tenant_id = "anonymous"
-        if raw_key and raw_key in API_KEYS:
-            tenant_id = API_KEYS[raw_key].get("tenant_id", "anonymous")
+        key_info = _lookup_api_key(raw_key)
+        if key_info is not None:
+            tenant_id = key_info.get("tenant_id", "anonymous")
 
         with RequestTimer(
             tenant_id=tenant_id,
@@ -570,8 +612,10 @@ def create_app(mcp_server: Server) -> FastAPI:
             # Auth / SSRF-guard rejections must surface as real HTTP errors,
             # not be wrapped into a 200 JSON-RPC error body.
             raise
-        except Exception as e:
-            logger.error("mcp_error", error=str(e), tenant_id=tenant_id)
+        except Exception:
+            # Log full detail server-side; return a generic message so internal
+            # error text (paths, AWX response fragments) never reaches clients.
+            logger.exception("mcp_error", tenant_id=tenant_id)
             if message.get("method") == "tools/call":
                 tool_name = message.get("params", {}).get("name")
                 monitoring_service.record_tool_call(tenant_id, tool_name, success=False)
@@ -584,7 +628,7 @@ def create_app(mcp_server: Server) -> FastAPI:
                     "id": message.get("id"),
                     "error": {
                         "code": -32603,
-                        "message": str(e),
+                        "message": "Internal error while processing the request.",
                     },
                 },
             )
@@ -664,11 +708,11 @@ def create_app(mcp_server: Server) -> FastAPI:
 
             return result
 
-        except Exception as e:
-            logger.error("message_error", error=str(e), tenant_id=tenant_id)
+        except Exception:
+            logger.exception("message_error", tenant_id=tenant_id)
             if tool_name:
                 monitoring_service.record_tool_call(tenant_id, tool_name, success=False)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail="Internal server error")
 
     # Helper function to get AWX client
     async def get_client(tenant_id: str):

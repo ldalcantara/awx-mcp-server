@@ -63,6 +63,14 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
     # ``async with client`` blocks don't close them.
     client_cache: OrderedDict[tuple, CompositeAWXClient] = OrderedDict()
     client_cache_max = 8
+    # Hold references to eviction-close tasks: a bare create_task() result can
+    # be garbage-collected before it runs and its exception is never observed.
+    close_tasks: set[asyncio.Task] = set()
+
+    def _close_task_done(task: asyncio.Task) -> None:
+        close_tasks.discard(task)
+        if not task.cancelled() and task.exception() is not None:
+            logger.warning(f"Error closing evicted AWX client: {task.exception()!r}")
 
     def cached_client(
         env: EnvironmentConfig,
@@ -86,7 +94,9 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
             while len(client_cache) >= client_cache_max:
                 _, evicted = client_cache.popitem(last=False)
                 try:
-                    asyncio.get_running_loop().create_task(evicted.aclose())
+                    task = asyncio.get_running_loop().create_task(evicted.aclose())
+                    close_tasks.add(task)
+                    task.add_done_callback(_close_task_done)
                 except RuntimeError:
                     # No running loop (sync caller): dropping the reference
                     # lets the pool's idle sockets be reclaimed by GC.
@@ -116,11 +126,20 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
 
             return env, cached_client(env, username, secret, is_token)
 
-        except (NoActiveEnvironmentError, Exception) as e:
-            # Fall back to environment variables
-            logger.info(
-                f"No stored environment found, checking environment variables: {e}"
-            )
+        except Exception as e:
+            # Fall back to environment variables. NoActiveEnvironmentError is
+            # the expected fresh-install / env-var-only case; anything else is
+            # a real storage or keyring fault, so surface it at WARNING with
+            # its class instead of hiding it as routine.
+            if isinstance(e, NoActiveEnvironmentError):
+                logger.info(
+                    "No stored environment configured; using environment variables"
+                )
+            else:
+                logger.warning(
+                    f"Stored-environment lookup failed ({type(e).__name__}: {e}); "
+                    "falling back to environment variables"
+                )
 
             # Per-request overrides (HTTP X-AWX-* headers) arrive via a
             # task-local ContextVar, not process-global os.environ, so

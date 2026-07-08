@@ -654,7 +654,12 @@ class RestAWXClient(AWXClient):
     async def update_project(
         self, project_id: int, wait: bool = True
     ) -> dict[str, Any]:
-        """Update project from SCM."""
+        """Update project from SCM.
+
+        When ``wait`` is true, returns the FINAL project_update record (with its
+        terminal ``status``), not the initial POST response — otherwise callers
+        can't tell whether the update actually succeeded or failed.
+        """
         data = await self._request("POST", f"/api/v2/projects/{project_id}/update/")
 
         if wait and "id" in data:
@@ -664,6 +669,7 @@ class RestAWXClient(AWXClient):
                 status_data = await self._request(
                     "GET", f"/api/v2/project_updates/{update_id}/"
                 )
+                data = status_data
                 status = status_data.get("status")
                 if status in ["successful", "failed", "error", "canceled"]:
                     break

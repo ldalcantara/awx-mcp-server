@@ -1080,7 +1080,7 @@ If you prefer NOT to use environment variables:
 
 ## 📖 Related Documentation
 
-- **[Remote Deployment Guide](REMOTE_DEPLOYMENT.md)** - How to deploy the remote server
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - How to deploy the server (local/remote/Docker/k8s/systemd)
 - **[AAP Support](../AAP_SUPPORT.md)** - AAP-specific configuration
 - **[OS Compatibility](../OS_COMPATIBILITY.md)** - Client OS requirements
 - **[Install from Source](../INSTALL_FROM_SOURCE.md)** - Customize the server

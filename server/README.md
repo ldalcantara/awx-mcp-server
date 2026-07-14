@@ -209,9 +209,8 @@ With the server configured, you can use natural language like:
 
 ### Installation & Setup
 - **[Quick Start](QUICK_START.md)** - Get started in 5 minutes with local setup
-- **[Two Keys Quick Reference](TWO_KEYS_QUICK_REFERENCE.md)** - Understanding MCP API Key vs AAP Token
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Modes, the two credential types (MCP API key vs AWX/AAP token), Docker, Kubernetes/Helm, systemd
 - **[Remote Client Setup](REMOTE_CLIENT_SETUP.md)** - Configure VS Code for remote MCP server
-- **[Remote Deployment](REMOTE_DEPLOYMENT.md)** - Deploy server in Docker, Kubernetes, or cloud
 - **[Install from Source](../INSTALL_FROM_SOURCE.md)** - Fork and customize for your organization
 
 ### Platform Support

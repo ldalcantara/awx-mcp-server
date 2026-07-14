@@ -45,36 +45,6 @@
         "label": "AWX MCP Servers"
       }
     ],
-    "chatParticipants": [
-      {
-        "id": "awx-mcp.awx",
-        "name": "awx",
-        "description": "AWX/Ansible Tower automation assistant - manages job templates, inventories, projects, and more",
-        "isSticky": true,
-        "commands": [
-          {
-            "name": "templates",
-            "description": "List job templates"
-          },
-          {
-            "name": "inventories",
-            "description": "List inventories"
-          },
-          {
-            "name": "projects",
-            "description": "List projects"
-          },
-          {
-            "name": "jobs",
-            "description": "Show recent jobs"
-          },
-          {
-            "name": "credentials",
-            "description": "List credentials"
-          }
-        ]
-      }
-    ],
     "commands": [
       {
         "command": "awx-mcp.start",

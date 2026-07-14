@@ -47,7 +47,7 @@ pip install awx-mcp-server
 Install this extension for enhanced UI features:
 
 **Features:**
-- 🤖 `@awx` chat participant with intelligent tool invocation
+- 🤖 AWX tools exposed to Copilot / agent mode natively over MCP
 - 📊 Sidebar views (instances, jobs, metrics, logs)
 - 🌲 Tree view of AWX resources
 - 🎨 Configuration webview UI
@@ -59,8 +59,7 @@ Install this extension for enhanced UI features:
 
 ## ✨ Features
 
-- 🤖 **GitHub Copilot Chat Participant**: Use `@awx` to intelligently interact with AWX (auto-invokes tools!)
-- 🧠 **Smart Tool Invocation**: Copilot automatically selects and calls AWX tools based on your questions
+- 🤖 **Native MCP tools in Copilot**: the extension registers the AWX MCP server, so Copilot and agent mode can call its tools directly — no custom chat participant to maintain
 - 🚀 **One-Click Setup**: Automatic installation and configuration of the MCP server
 - 📊 **Job Management**: Launch, monitor, and troubleshoot Ansible jobs
 - 🔐 **Secure Authentication**: Credential storage using OS keyring
@@ -68,32 +67,21 @@ Install this extension for enhanced UI features:
 - 📈 **Real-time Monitoring**: View server metrics and logs in the sidebar
 - ⚡ **Auto-start**: Server starts automatically when VS Code opens
 
-## 🎯 Two Ways to Use AWX with Copilot
+## 🎯 Using AWX with Copilot
 
-### Method 1: Chat Participant (Recommended) ⭐
-
-Use the `@awx` chat participant for intelligent, automatic tool invocation:
+Once the extension has registered the MCP server, its tools are available to
+Copilot **agent mode** and to the "Add context → Tools" picker — no `@`-mention
+needed. Just ask in natural language and Copilot selects and calls the tools:
 
 ```
-@awx List my job templates
-@awx Show me recent jobs
-@awx What inventories do I have?
+List my job templates
+Show me recent jobs
+What inventories do I have?
+Launch the "Deploy Production" template
 ```
 
-**How it works:**
-- Extension analyzes your question
-- Automatically selects appropriate AWX tools
-- Invokes tools and formats results
-- No manual tool selection needed!
-
-[📖 Full Copilot Chat Guide](./COPILOT_CHAT_GUIDE.md)
-
-### Method 2: Traditional MCP Tools
-
-Use the "Add context" button in Copilot Chat:
-1. Click the attachment icon in Copilot Chat
-2. Select "Tool" → Choose AWX tools
-3. Ask questions about the tool results
+Prefer explicit control? Click the attachment/tools icon in Copilot Chat,
+pick the AWX tools you want, then ask your question.
 
 ## 📋 Requirements
 
@@ -130,35 +118,34 @@ This extension uses **Python MCP Server via PyPI**:
    - Enter your AWX URL, username, and token/password
 4. **Start Using with Copilot**:
    ```
-   Open GitHub Copilot Chat and try:
-   "@awx list my job templates"
-   "@awx show me recent jobs"  
-   "@awx what inventories do I have?"
+   Open GitHub Copilot Chat (agent mode) and try:
+   "list my job templates"
+   "show me recent jobs"
+   "what inventories do I have?"
    ```
 
 The extension will automatically:
 - Detect your Python environment
 - Install `awx-mcp-server` from PyPI if not present
-- Register as `@awx` chat participant
-- Configure MCP tools for Copilot
+- Register the AWX MCP server so Copilot can call its tools natively
 
 ## 💡 Usage Examples
 
 ### 📋 Discovery & Listing
 ```
-@awx list all job templates
-@awx show me inventories  
-@awx what projects are available?
-@awx list environments
+list all job templates
+show me inventories
+what projects are available?
+list environments
 ```
 
 ### 🚀 Job Management
 ```
-@awx launch template "Deploy Production"
-@awx show recent jobs
-@awx show failed jobs
-@awx show running jobs
-@awx cancel job 123
+launch template "Deploy Production"
+show recent jobs
+show failed jobs
+show running jobs
+cancel job 123
 ```
 
 ### 📊 Job Monitoring & Status

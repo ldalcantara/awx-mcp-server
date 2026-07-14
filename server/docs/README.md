@@ -49,25 +49,15 @@ This folder contains comprehensive documentation for the AWX MCP Server, organiz
 ## 🏗 Advanced Topics
 
 ### Deployment Guides
-- **[../REMOTE_DEPLOYMENT.md](../REMOTE_DEPLOYMENT.md)**
-  - Docker, Kubernetes, OpenShift deployment
-  - Cloud platform deployment (AWS, Azure, GCP)
-  - Load balancer configuration
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+  - Modes (local stdio vs remote HTTP) and the two credential types
+  - Docker Compose, Kubernetes/Helm, systemd
+  - Full environment-variable reference
 
 - **[../REMOTE_CLIENT_SETUP.md](../REMOTE_CLIENT_SETUP.md)**
   - VS Code client configuration for remote servers
   - HTTP vs STDIO modes
   - API key authentication
-
-### Multi-Mode Deployment
-- **[../DEPLOYMENT_ARCHITECTURE.md](../DEPLOYMENT_ARCHITECTURE.md)**
-  - Single User vs Team/Enterprise modes
-  - Architecture diagrams
-  - Credential management options
-
-- **[../DUAL_MODE_QUICKSTART.md](../DUAL_MODE_QUICKSTART.md)**
-  - Quick comparison of deployment modes
-  - When to use which mode
 
 ### Installation Methods
 - **[../INSTALL_FROM_SOURCE.md](../INSTALL_FROM_SOURCE.md)**
@@ -124,10 +114,9 @@ This folder contains comprehensive documentation for the AWX MCP Server, organiz
 3. [LOGGING.md](./LOGGING.md) (Monitoring per environment)
 
 ### "I want to deploy for my team"
-1. ✅ [../DUAL_MODE_QUICKSTART.md](../DUAL_MODE_QUICKSTART.md)
-2. ✅ [../REMOTE_DEPLOYMENT.md](../REMOTE_DEPLOYMENT.md)
-3. ✅ [../REMOTE_CLIENT_SETUP.md](../REMOTE_CLIENT_SETUP.md)
-4. [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md)
+1. ✅ [DEPLOYMENT.md](./DEPLOYMENT.md)
+2. ✅ [../REMOTE_CLIENT_SETUP.md](../REMOTE_CLIENT_SETUP.md)
+3. [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md)
 
 ### "I want to monitor and log transactions"
 1. ✅ [LOGGING.md](./LOGGING.md)
@@ -143,7 +132,7 @@ This folder contains comprehensive documentation for the AWX MCP Server, organiz
 1. ✅ [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md)
 2. [MULTI_ENVIRONMENT_SETUP.md](./MULTI_ENVIRONMENT_SETUP.md)
 3. [LOGGING.md](./LOGGING.md)
-4. [../REMOTE_DEPLOYMENT.md](../REMOTE_DEPLOYMENT.md)
+4. [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ---
 

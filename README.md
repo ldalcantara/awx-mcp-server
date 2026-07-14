@@ -666,10 +666,8 @@ Access monitoring dashboards:
 ### Platform Support
 - **[AAP Support Guide](AAP_SUPPORT.md)** - Complete guide for Ansible Automation Platform, AWX, and Ansible Tower
 
-### Deployment Architectures
-- **[Deployment Architecture](DEPLOYMENT_ARCHITECTURE.md)** - Single-user vs Team/Enterprise deployment options
-- **[Remote Deployment Guide](server/REMOTE_DEPLOYMENT.md)** - Docker, Kubernetes, and cloud deployment
-- **[Dual-Mode Quick Start](DUAL_MODE_QUICKSTART.md)** - Quick reference for choosing deployment mode
+### Deployment
+- **[Deployment Guide](server/docs/DEPLOYMENT.md)** - Modes (local/remote), the two credential types, Docker, Kubernetes/Helm, systemd, and the full environment reference
 
 ### Advanced Features (Planned)
 - **[Vault Integration](server/VAULT_INTEGRATION.md)** - HashiCorp Vault, AWS Secrets Manager, Azure Key Vault support (v2.0.0)

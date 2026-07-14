@@ -673,7 +673,7 @@ Access monitoring dashboards:
 
 ### Advanced Features (Planned)
 - **[Vault Integration](server/VAULT_INTEGRATION.md)** - HashiCorp Vault, AWS Secrets Manager, Azure Key Vault support (v2.0.0)
-- **[Implementation Status](IMPLEMENTATION_STATUS.md)** - Current features and roadmap
+- **[Changelog](server/CHANGELOG.md)** - Released features and version history
 
 ### Additional Resources
 - **[MCP Copilot Setup](vscode-extension/MCP_COPILOT_SETUP.md)** - VS Code MCP configuration

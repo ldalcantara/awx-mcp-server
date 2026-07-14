@@ -86,8 +86,8 @@ This folder contains comprehensive documentation for the AWX MCP Server, organiz
   - Platform-specific settings
 
 ### Advanced Features
-- **[../IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md)**
-  - Current implementation status
+- **[../CHANGELOG.md](../CHANGELOG.md)**
+  - Released features and version history
   - Future enhancements (Vault integration)
 
 - **[VAULT_INTEGRATION.md](./VAULT_INTEGRATION.md)** (Future - v2.0.0)
@@ -137,7 +137,7 @@ This folder contains comprehensive documentation for the AWX MCP Server, organiz
 ### "I want to customize the server"
 1. ✅ [../INSTALL_FROM_SOURCE.md](../INSTALL_FROM_SOURCE.md)
 2. [ENDPOINT_CLEANUP.md](./ENDPOINT_CLEANUP.md)
-3. [../IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md)
+3. [../CHANGELOG.md](../CHANGELOG.md)
 
 ### "I need production deployment checklist"
 1. ✅ [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md)
@@ -186,7 +186,7 @@ All documentation follows these standards:
 
 If you find gaps in the documentation:
 
-1. Check the [IMPLEMENTATION_STATUS.md](../IMPLEMENTATION_STATUS.md) to see if it's planned
+1. Check the [CHANGELOG.md](../CHANGELOG.md) to see what's shipped
 2. Open an issue describing what's missing
 3. Submit a PR with improvements
 

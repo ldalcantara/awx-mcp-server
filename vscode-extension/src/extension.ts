@@ -11,7 +11,10 @@
  * - extension/pythonExecutor.ts: Python command execution
  * - extension/commands.ts: Command registration
  * - mcp/*: MCP server lifecycle management
- * - awx/*: AWX Copilot Chat participant
+ *
+ * Tool access is provided natively: the extension registers the MCP server with
+ * Copilot (see extension/mcpConfiguration.ts), and Copilot/agent mode calls the
+ * server's tools directly over MCP.
  */
 
 import * as vscode from 'vscode';
@@ -21,7 +24,6 @@ import { ConfigurationWebview } from './views/configurationWebview';
 import { ConnectionStatusProvider } from './views/connectionStatusProvider';
 import { MetricsProvider } from './views/metricsProvider';
 import { LogsProvider } from './views/logsProvider';
-import { AWXCopilotChatParticipant } from './copilotChatParticipant';
 import { registerCommands } from './extension/commands';
 import { checkDependencies, setupDependencies } from './extension/dependencies';
 import { configureMcpServer } from './extension/mcpConfiguration';
@@ -32,7 +34,6 @@ let outputChannel: vscode.OutputChannel;
 let configProvider: ConfigurationProvider;
 let configWebview: ConfigurationWebview;
 let connectionStatusProvider: ConnectionStatusProvider;
-let chatParticipant: AWXCopilotChatParticipant;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('AWX MCP extension is now active');
@@ -95,27 +96,10 @@ export function activate(context: vscode.ExtensionContext) {
     const logsProvider = new LogsProvider(serverManager);
     vscode.window.registerTreeDataProvider('awx-mcp-logs', logsProvider);
 
-    // Register Copilot Chat Participant for intelligent tool invocation
-    try {
-        chatParticipant = new AWXCopilotChatParticipant(context, outputChannel);
-        const participantDisposable = chatParticipant.register();
-        
-        if (participantDisposable) {
-            context.subscriptions.push(participantDisposable);
-            
-            // Load available tools
-            chatParticipant.updateTools().catch(err => {
-                outputChannel.appendLine(`Note: Could not load tools metadata: ${err.message}`);
-            });
-            
-            outputChannel.appendLine('✓ AWX Copilot Chat Participant initialized');
-            outputChannel.appendLine('  You can now use @awx in Copilot Chat to interact with AWX');
-            outputChannel.appendLine('  Intelligent slot-filling enabled: missing values trigger follow-up questions');
-        }
-    } catch (error: any) {
-        outputChannel.appendLine(`Note: Copilot Chat Participant not available: ${error.message}`);
-        outputChannel.appendLine('  This feature requires GitHub Copilot Chat extension');
-    }
+    // Tool access is native: once the MCP server is registered (above), Copilot
+    // and agent mode call its tools directly over MCP — no custom chat
+    // participant is needed.
+    outputChannel.appendLine('✓ AWX MCP server registered; use the tools via Copilot / agent mode');
 
     // Register all commands (modularized in extension/commands.ts)
     registerCommands(

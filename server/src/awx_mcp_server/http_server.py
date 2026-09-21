@@ -320,7 +320,9 @@ async def process_mcp_message(
                 server_result = await handler(request)
                 # ServerResult is a Pydantic RootModel - access the wrapped result via .root
                 resources_result = server_result.root
-                result = {"resources": [_wire(res) for res in resources_result.resources]}
+                result = {
+                    "resources": [_wire(res) for res in resources_result.resources]
+                }
 
         elif method == "ping":
             # Ping/pong for keep-alive

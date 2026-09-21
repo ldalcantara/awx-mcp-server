@@ -221,6 +221,18 @@ def extract_awx_config_from_headers(request: Request) -> dict[str, str]:
     return config
 
 
+def _wire(model) -> dict:
+    """Serialize an MCP SDK model the way the protocol expects on the wire.
+
+    ``exclude_none``: optional fields the SDK models carry (``title``, ``icons``,
+    ``outputSchema``, ``annotations``, ``execution``, ``_meta`` …) must be
+    *absent*, not ``null`` — strict clients reject ``null`` and fail the whole
+    ``tools/list``. ``by_alias``: ``meta`` is ``_meta`` on the wire.
+    ``mode="json"``: plain JSON types only.
+    """
+    return model.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+
 async def process_mcp_message(
     mcp_server: Server, message: dict, tenant_id: str
 ) -> dict:
@@ -236,11 +248,13 @@ async def process_mcp_message(
         # Handle different MCP methods
         if method == "initialize":
             # MCP handshake - return server info
+            # Advertise only what is served: no resources handler is registered,
+            # and a client that trusts the capability list would otherwise call
+            # resources/list and get an internal error back.
             result = {
                 "protocolVersion": "2024-11-05",
                 "capabilities": {
                     "tools": {},
-                    "resources": {},
                 },
                 "serverInfo": {
                     "name": "awx-mcp-server",
@@ -258,7 +272,7 @@ async def process_mcp_message(
             # ServerResult is a Pydantic RootModel; for a ListToolsRequest the
             # wrapped result is always a ListToolsResult.
             tools_result = cast(ListToolsResult, server_result.root)
-            result = {"tools": [tool.model_dump() for tool in tools_result.tools]}
+            result = {"tools": [_wire(tool) for tool in tools_result.tools]}
 
         elif method == "tools/call":
             # Call a specific tool
@@ -287,31 +301,26 @@ async def process_mcp_message(
             # wrapped result is always a CallToolResult.
             tool_result = cast(CallToolResult, server_result.root)
 
-            # Convert result to JSON-serializable format
-            result = {
-                "content": [
-                    {
-                        "type": content.type,
-                        "text": (
-                            content.text if hasattr(content, "text") else str(content)
-                        ),
-                    }
-                    for content in tool_result.content
-                ]
-            }
+            # Serialize the whole result: keeps ``isError`` (a failed tool call
+            # was previously indistinguishable from a successful one) and any
+            # ``structuredContent``, and renders every content type faithfully.
+            result = _wire(tool_result)
 
         elif method == "resources/list":
             # List available resources using class type as key
             from mcp.types import ListResourcesRequest
 
-            request = ListResourcesRequest(method="resources/list", params=params)
-            handler = mcp_server.request_handlers[ListResourcesRequest]
-            server_result = await handler(request)
-            # ServerResult is a Pydantic RootModel - access the wrapped result via .root
-            resources_result = server_result.root
-            result = {
-                "resources": [res.model_dump() for res in resources_result.resources]
-            }
+            handler = mcp_server.request_handlers.get(ListResourcesRequest)
+            if handler is None:
+                # Nothing registered: an empty list is the truthful answer, not
+                # a KeyError turned into "Internal error".
+                result = {"resources": []}
+            else:
+                request = ListResourcesRequest(method="resources/list", params=params)
+                server_result = await handler(request)
+                # ServerResult is a Pydantic RootModel - access the wrapped result via .root
+                resources_result = server_result.root
+                result = {"resources": [_wire(res) for res in resources_result.resources]}
 
         elif method == "ping":
             # Ping/pong for keep-alive

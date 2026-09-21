@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Pin the MCP Python SDK to `<2`.** SDK 2.0 removed the 1.x low-level
+  `Server.list_tools()` / `call_tool()` decorators that `mcp_server.py` uses;
+  a fresh `pip install` resolved to 2.x and the server started, then crashed
+  with `AttributeError: 'Server' object has no attribute 'list_tools'`. Every
+  container image built from this repo since the 2.0 release was affected.
+  The dependency is now `mcp>=1.0.0,<2` until the server is ported to the
+  2.x API.
+
 ### Performance
 - **Connection reuse across tool calls** — the server now caches one
   `CompositeAWXClient` per resolved (URL, credentials) and marks it

@@ -293,7 +293,7 @@ TOOLS: list[Tool] = [
 async def _h_awx_notification_templates_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         templates = await client.list_notification_templates(
             name_filter=arguments.get("filter"),
@@ -324,7 +324,7 @@ async def _h_awx_notification_templates_list(
 async def _h_awx_notification_template_get(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -362,7 +362,7 @@ async def _h_awx_notification_template_get(
 async def _h_awx_notification_template_create(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         tmpl = await client.create_notification_template(
             name=arguments["name"],
@@ -384,7 +384,7 @@ async def _h_awx_notification_template_create(
 async def _h_awx_notification_template_test(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -403,7 +403,7 @@ async def _h_awx_notification_template_test(
 async def _h_awx_notifications_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
 
     async with client:
         notifications = await client.list_notifications(
@@ -437,7 +437,7 @@ async def _h_awx_notifications_list(
 async def _h_awx_notification_template_update(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments.pop("template_id")
 
     async with client:
@@ -459,7 +459,7 @@ async def _h_awx_notification_template_update(
 async def _h_awx_notification_template_delete(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -476,7 +476,7 @@ async def _h_awx_notification_template_delete(
 async def _h_awx_job_template_notifications_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -510,7 +510,7 @@ async def _h_awx_job_template_notifications_list(
 async def _h_awx_job_template_notification_associate(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
     notification_id = arguments["notification_template_id"]
     event = arguments["event"]
@@ -531,7 +531,7 @@ async def _h_awx_job_template_notification_associate(
 async def _h_awx_job_template_notification_disassociate(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
     notification_id = arguments["notification_template_id"]
     event = arguments["event"]
@@ -552,7 +552,7 @@ async def _h_awx_job_template_notification_disassociate(
 async def _h_awx_workflow_template_notifications_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -586,7 +586,7 @@ async def _h_awx_workflow_template_notifications_list(
 async def _h_awx_workflow_template_notification_associate(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
     notification_id = arguments["notification_template_id"]
     event = arguments["event"]
@@ -607,7 +607,7 @@ async def _h_awx_workflow_template_notification_associate(
 async def _h_awx_workflow_template_notification_disassociate(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
     notification_id = arguments["notification_template_id"]
     event = arguments["event"]

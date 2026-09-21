@@ -116,11 +116,12 @@ def _classify_failure(error_msg: str, stderr: str, event: JobEvent) -> FailureCa
         return FailureCategory.PERMISSION_DENIED
 
     # Check for module-specific failures
-    if event.task and any(
-        mod in event.task.lower() for mod in ["yum", "apt", "dnf", "package"]
+    if (
+        event.task
+        and any(mod in event.task.lower() for mod in ["yum", "apt", "dnf", "package"])
+        and ("no package" in combined or "not found" in combined)
     ):
-        if "no package" in combined or "not found" in combined:
-            return FailureCategory.MODULE_FAILURE
+        return FailureCategory.MODULE_FAILURE
 
     return FailureCategory.UNKNOWN
 

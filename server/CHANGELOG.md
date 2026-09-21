@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Adopt ruff 0.16 across the whole repository.** The linter now runs the
+  0.16 rule set: 325 findings auto-fixed (import order, `Optional[X]` ->
+  `X | None`, `Dict` -> `dict`, redundant `pass`, f-string conversions), 12
+  fixed by hand (collapsed nested `if`s, a swallowed exception now logged,
+  `dict.keys()` membership, `exit` -> `sys.exit`, `ClassVar` on a Pydantic
+  `Config` attribute, explicit `check=` on `subprocess.run`), and 55 unused
+  `env` unpackings renamed to `_env`. Six rules are exempted in
+  `[tool.ruff.lint]`, each with the reason in the file. A new root `ruff.toml`
+  extends the package config, so `tests/` and the root-level scripts are
+  linted under the same policy instead of ruff's bare defaults.
+
 - **Optional tool fields were sent as `null`.** `tools/list` and
   `resources/list` serialized SDK models with a bare `model_dump()`, so every
   optional field (`title`, `icons`, `outputSchema`, `annotations`,

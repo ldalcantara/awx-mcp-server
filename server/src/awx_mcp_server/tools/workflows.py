@@ -255,7 +255,7 @@ TOOLS: list[Tool] = [
 async def _h_awx_workflow_templates_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         templates = await client.list_workflow_job_templates(
             name_filter=arguments.get("filter"),
@@ -282,7 +282,7 @@ async def _h_awx_workflow_templates_list(
 async def _h_awx_workflow_template_get(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -352,7 +352,7 @@ async def _h_awx_workflow_job_launch(
 async def _h_awx_workflow_job_get(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -383,7 +383,7 @@ async def _h_awx_workflow_job_get(
 async def _h_awx_workflow_jobs_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
 
     async with client:
         wf_jobs = await client.list_workflow_jobs(
@@ -411,7 +411,7 @@ async def _h_awx_workflow_jobs_list(
 async def _h_awx_workflow_job_cancel(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -428,7 +428,7 @@ async def _h_awx_workflow_job_cancel(
 async def _h_awx_workflow_job_nodes(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -478,7 +478,7 @@ async def _h_awx_workflow_job_nodes(
 async def _h_awx_workflow_job_delete(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -492,7 +492,7 @@ async def _h_awx_workflow_job_delete(
 async def _h_awx_workflow_job_relaunch(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -509,7 +509,7 @@ async def _h_awx_workflow_job_relaunch(
 async def _h_awx_workflow_template_nodes(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -546,7 +546,7 @@ async def _h_awx_workflow_template_nodes(
 async def _h_awx_workflow_template_survey(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -581,7 +581,7 @@ async def _h_awx_workflow_template_survey(
 async def _h_awx_workflow_template_schedules(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:
@@ -610,7 +610,7 @@ async def _h_awx_workflow_template_schedules(
 async def _h_awx_workflow_template_launch_config(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:

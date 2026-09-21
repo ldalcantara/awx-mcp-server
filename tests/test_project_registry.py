@@ -5,7 +5,6 @@ real ~/.awx-mcp/project_registry.json.
 """
 
 import pytest
-
 from awx_mcp_server import project_registry as pr
 
 

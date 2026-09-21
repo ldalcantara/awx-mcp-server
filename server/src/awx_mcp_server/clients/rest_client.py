@@ -3,7 +3,7 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 from tenacity import (
@@ -14,7 +14,6 @@ from tenacity import (
 )
 
 from awx_mcp_server.clients.base import AWXClient
-from awx_mcp_server.utils import get_logger
 from awx_mcp_server.domain import (
     AWXAuthenticationError,
     AWXClientError,
@@ -30,6 +29,7 @@ from awx_mcp_server.domain import (
     WorkflowJobNode,
     WorkflowJobTemplate,
 )
+from awx_mcp_server.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -44,7 +44,7 @@ class RestAWXClient(AWXClient):
     def __init__(
         self,
         config: EnvironmentConfig,
-        username: Optional[str],
+        username: str | None,
         secret: str,
         is_token: bool = False,
     ):
@@ -210,7 +210,7 @@ class RestAWXClient(AWXClient):
     async def _get_all(
         self,
         endpoint: str,
-        params: Optional[dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
         max_items: int = 1000,
     ) -> list[dict[str, Any]]:
         """GET a paginated list endpoint.
@@ -267,7 +267,7 @@ class RestAWXClient(AWXClient):
     # Organizations
 
     async def list_organizations(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[dict[str, Any]]:
         """List organizations."""
         params = {"page": page, "page_size": page_size}
@@ -294,7 +294,7 @@ class RestAWXClient(AWXClient):
         return await self._request("GET", f"/api/v2/credential_types/{cred_type_id}/")
 
     async def list_credentials(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[dict[str, Any]]:
         """List credentials."""
         params = {"page": page, "page_size": page_size}
@@ -332,7 +332,7 @@ class RestAWXClient(AWXClient):
     # Notification Templates
 
     async def list_notification_templates(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[dict[str, Any]]:
         """List notification templates."""
         params = {"page": page, "page_size": page_size}
@@ -399,9 +399,9 @@ class RestAWXClient(AWXClient):
         name: str,
         organization: int,
         notification_type: str,
-        notification_configuration: Optional[dict[str, Any]] = None,
+        notification_configuration: dict[str, Any] | None = None,
         description: str = "",
-        messages: Optional[dict[str, Any]] = None,
+        messages: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Create notification template."""
         payload: dict[str, Any] = {
@@ -440,8 +440,8 @@ class RestAWXClient(AWXClient):
 
     async def list_notifications(
         self,
-        notification_template_id: Optional[int] = None,
-        status: Optional[str] = None,
+        notification_template_id: int | None = None,
+        status: str | None = None,
         page: int = 1,
         page_size: int = 25,
     ) -> list[dict[str, Any]]:
@@ -492,7 +492,7 @@ class RestAWXClient(AWXClient):
         )
 
     async def list_job_templates(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[JobTemplate]:
         """List job templates."""
         params = {"page": page, "page_size": page_size}
@@ -541,8 +541,8 @@ class RestAWXClient(AWXClient):
         playbook: str,
         job_type: str = "run",
         description: str = "",
-        extra_vars: Optional[dict] = None,
-        limit: Optional[str] = None,
+        extra_vars: dict | None = None,
+        limit: str | None = None,
     ) -> JobTemplate:
         """Create job template."""
         payload = {
@@ -590,7 +590,7 @@ class RestAWXClient(AWXClient):
         )
 
     async def list_projects(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[Project]:
         """List projects."""
         params = {"page": page, "page_size": page_size}
@@ -631,7 +631,7 @@ class RestAWXClient(AWXClient):
         name: str,
         organization: int,
         scm_type: str = "git",
-        scm_url: Optional[str] = None,
+        scm_url: str | None = None,
         scm_branch: str = "main",
         description: str = "",
     ) -> Project:
@@ -688,7 +688,7 @@ class RestAWXClient(AWXClient):
         return data
 
     async def list_inventories(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[Inventory]:
         """List inventories."""
         params = {"page": page, "page_size": page_size}
@@ -726,7 +726,7 @@ class RestAWXClient(AWXClient):
         name: str,
         organization: int,
         description: str = "",
-        variables: Optional[dict] = None,
+        variables: dict | None = None,
     ) -> Inventory:
         """Create inventory."""
         payload = {
@@ -765,7 +765,7 @@ class RestAWXClient(AWXClient):
         inventory_id: int,
         name: str,
         description: str = "",
-        variables: Optional[dict] = None,
+        variables: dict | None = None,
     ) -> dict[str, Any]:
         """Create group in inventory."""
         payload = {"name": name, "description": description}
@@ -792,7 +792,7 @@ class RestAWXClient(AWXClient):
         inventory_id: int,
         name: str,
         description: str = "",
-        variables: Optional[dict] = None,
+        variables: dict | None = None,
     ) -> dict[str, Any]:
         """Create host in inventory."""
         payload = {"name": name, "description": description}
@@ -810,10 +810,10 @@ class RestAWXClient(AWXClient):
     async def launch_job(
         self,
         template_id: int,
-        extra_vars: Optional[dict[str, Any]] = None,
-        limit: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        skip_tags: Optional[list[str]] = None,
+        extra_vars: dict[str, Any] | None = None,
+        limit: str | None = None,
+        tags: list[str] | None = None,
+        skip_tags: list[str] | None = None,
     ) -> Job:
         """Launch job from template."""
         payload: dict[str, Any] = {}
@@ -840,9 +840,9 @@ class RestAWXClient(AWXClient):
 
     async def list_jobs(
         self,
-        status: Optional[str] = None,
-        created_after: Optional[str] = None,
-        job_template_id: Optional[int] = None,
+        status: str | None = None,
+        created_after: str | None = None,
+        job_template_id: int | None = None,
         page: int = 1,
         page_size: int = 25,
     ) -> list[Job]:
@@ -868,7 +868,7 @@ class RestAWXClient(AWXClient):
         await self._request("DELETE", f"/api/v2/jobs/{job_id}/")
 
     async def get_job_stdout(
-        self, job_id: int, format: str = "txt", tail_lines: Optional[int] = None
+        self, job_id: int, format: str = "txt", tail_lines: int | None = None
     ) -> str:
         """Get job stdout with fallback to job events.
 
@@ -1051,7 +1051,7 @@ class RestAWXClient(AWXClient):
 
     # ── Workflow Job Templates ──
 
-    def _parse_datetime(self, value: Any) -> Optional[datetime]:
+    def _parse_datetime(self, value: Any) -> datetime | None:
         """Parse datetime string from API response."""
         if not value:
             return None
@@ -1118,7 +1118,7 @@ class RestAWXClient(AWXClient):
         )
 
     async def list_workflow_job_templates(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[WorkflowJobTemplate]:
         """List workflow job templates."""
         params = {"page": page, "page_size": page_size}
@@ -1138,10 +1138,10 @@ class RestAWXClient(AWXClient):
     async def launch_workflow_job(
         self,
         template_id: int,
-        extra_vars: Optional[dict[str, Any]] = None,
-        limit: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        skip_tags: Optional[list[str]] = None,
+        extra_vars: dict[str, Any] | None = None,
+        limit: str | None = None,
+        tags: list[str] | None = None,
+        skip_tags: list[str] | None = None,
     ) -> WorkflowJob:
         """Launch workflow job from template."""
         payload: dict[str, Any] = {}
@@ -1169,10 +1169,10 @@ class RestAWXClient(AWXClient):
 
     async def list_workflow_jobs(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         page: int = 1,
         page_size: int = 25,
-        workflow_template_id: Optional[int] = None,
+        workflow_template_id: int | None = None,
     ) -> list[WorkflowJob]:
         """List workflow jobs."""
         params = {"page": page, "page_size": page_size, "order_by": "-id"}

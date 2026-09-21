@@ -19,9 +19,9 @@ Supported Providers (Planned):
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 class VaultProvider(Enum):
@@ -42,11 +42,11 @@ class AWXCredentials:
     """AWX credentials retrieved from vault."""
 
     awx_url: str
-    awx_token: Optional[str] = None
-    awx_username: Optional[str] = None
-    awx_password: Optional[str] = None
+    awx_token: str | None = None
+    awx_username: str | None = None
+    awx_password: str | None = None
     environment: str = "production"
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class BaseVaultProvider(ABC):
@@ -57,7 +57,7 @@ class BaseVaultProvider(ABC):
     the required methods.
     """
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize vault provider.
 
@@ -85,7 +85,6 @@ class BaseVaultProvider(ABC):
             VaultAccessDeniedError: If user doesn't have access
             VaultCredentialsNotFoundError: If credentials not found
         """
-        pass
 
     @abstractmethod
     async def update_credentials(
@@ -106,7 +105,6 @@ class BaseVaultProvider(ABC):
             VaultAuthenticationError: If authentication fails
             VaultAccessDeniedError: If user doesn't have write access
         """
-        pass
 
     @abstractmethod
     async def delete_credentials(
@@ -122,7 +120,6 @@ class BaseVaultProvider(ABC):
         Returns:
             True if successful
         """
-        pass
 
     @abstractmethod
     async def health_check(self) -> bool:
@@ -132,25 +129,18 @@ class BaseVaultProvider(ABC):
         Returns:
             True if vault is accessible
         """
-        pass
 
 
 class VaultAuthenticationError(Exception):
     """Raised when vault authentication fails."""
 
-    pass
-
 
 class VaultAccessDeniedError(Exception):
     """Raised when user doesn't have access to credentials."""
 
-    pass
-
 
 class VaultCredentialsNotFoundError(Exception):
     """Raised when credentials are not found in vault."""
-
-    pass
 
 
 # Placeholder implementations - Will be implemented in future versions
@@ -288,7 +278,7 @@ VAULT_PROVIDERS = {
 
 
 def create_vault_provider(
-    provider_type: VaultProvider, config: Dict[str, Any]
+    provider_type: VaultProvider, config: dict[str, Any]
 ) -> BaseVaultProvider:
     """
     Factory function to create vault provider instances.

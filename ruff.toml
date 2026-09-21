@@ -1,0 +1,8 @@
+# Repo-root ruff config.
+#
+# The real settings live in server/pyproject.toml ([tool.ruff]); ruff resolves
+# configuration per file from the nearest config upwards, so without this file
+# everything OUTSIDE server/ — tests/, the root-level probe scripts — was linted
+# with ruff's bare defaults and none of the project's deliberate exemptions.
+# `extend` keeps one source of truth instead of two drifting copies.
+extend = "server/pyproject.toml"

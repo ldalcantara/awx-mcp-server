@@ -2,7 +2,6 @@
 
 import json
 from pathlib import Path
-from typing import Optional
 from uuid import UUID
 
 from awx_mcp_server.domain import (
@@ -16,9 +15,7 @@ from awx_mcp_server.domain import (
 class ConfigManager:
     """Manage AWX environment configurations."""
 
-    def __init__(
-        self, config_path: Optional[Path] = None, tenant_id: Optional[str] = None
-    ):
+    def __init__(self, config_path: Path | None = None, tenant_id: str | None = None):
         """
         Initialize config manager.
 
@@ -39,7 +36,7 @@ class ConfigManager:
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
         self._environments: dict[str, EnvironmentConfig] = {}
-        self._active_env: Optional[str] = None
+        self._active_env: str | None = None
         self._load()
 
     def add_environment(self, env: EnvironmentConfig) -> None:
@@ -190,7 +187,7 @@ class ConfigManager:
             raise NoActiveEnvironmentError("No active environment set")
         return self._environments[self._active_env]
 
-    def get_active_name(self) -> Optional[str]:
+    def get_active_name(self) -> str | None:
         """
         Get active environment name.
 

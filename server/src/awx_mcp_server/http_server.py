@@ -4,29 +4,30 @@ import asyncio
 import json
 import os
 import secrets
+from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
-from typing import Any, Optional, AsyncIterator, cast
+from typing import Any, cast
 from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request, Depends, Header
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from mcp.server import Server
+from prometheus_client import CONTENT_TYPE_LATEST
 from pydantic import BaseModel
 
-from prometheus_client import CONTENT_TYPE_LATEST
 from awx_mcp_server import __version__
 from awx_mcp_server.monitoring import (
-    monitoring_service,
     RequestTimer,
+    monitoring_service,
+)
+from awx_mcp_server.request_context import (
+    reset_awx_override,
+    set_awx_override,
 )
 
 # Import local components
 from awx_mcp_server.storage import ConfigManager, CredentialStore
-from awx_mcp_server.request_context import (
-    set_awx_override,
-    reset_awx_override,
-)
 from awx_mcp_server.utils import configure_logging, get_logger, redact_sensitive
 
 logger = get_logger(__name__)
@@ -35,7 +36,7 @@ logger = get_logger(__name__)
 API_KEYS: dict[str, dict[str, Any]] = {}
 
 
-def _truthy(val: Optional[str]) -> bool:
+def _truthy(val: str | None) -> bool:
     return (val or "").strip().lower() in {"1", "true", "yes", "on"}
 
 
@@ -45,7 +46,7 @@ def _anonymous_allowed() -> bool:
     return _truthy(os.environ.get("MCP_ALLOW_ANONYMOUS"))
 
 
-def _require_admin(authorization: Optional[str]) -> None:
+def _require_admin(authorization: str | None) -> None:
     """Gate admin endpoints on the ADMIN_TOKEN env var. Fail closed when it is
     not configured, and compare in constant time."""
     admin_token = os.environ.get("ADMIN_TOKEN")
@@ -59,7 +60,7 @@ def _require_admin(authorization: Optional[str]) -> None:
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
 
 
-def _validate_awx_base_url(url: Optional[str]) -> None:
+def _validate_awx_base_url(url: str | None) -> None:
     """SSRF guard: only honor a client-supplied AWX base URL if it matches the
     AWX_ALLOWED_HOSTS allowlist (comma-separated). Fail closed so an attacker
     can't point the server at internal/metadata endpoints.
@@ -111,13 +112,13 @@ def _validate_awx_base_url(url: Optional[str]) -> None:
     raise denied
 
 
-def _lookup_api_key(candidate: Optional[str]) -> Optional[dict[str, Any]]:
+def _lookup_api_key(candidate: str | None) -> dict[str, Any] | None:
     """Constant-time API-key lookup: compare the candidate against every stored
     key with secrets.compare_digest so response timing doesn't leak how close a
     guess is (a plain dict membership test short-circuits on the first bytes)."""
     if not candidate:
         return None
-    found: Optional[dict[str, Any]] = None
+    found: dict[str, Any] | None = None
     for key, info in API_KEYS.items():
         if secrets.compare_digest(candidate, key):
             found = info
@@ -129,7 +130,7 @@ class APIKeyCreate(BaseModel):
 
     name: str
     tenant_id: str
-    expires_days: Optional[int] = 90
+    expires_days: int | None = 90
 
 
 class APIKeyResponse(BaseModel):
@@ -139,10 +140,10 @@ class APIKeyResponse(BaseModel):
     name: str
     tenant_id: str
     created_at: str
-    expires_at: Optional[str]
+    expires_at: str | None
 
 
-def verify_api_key(x_api_key: Optional[str] = Header(None)) -> dict[str, Any]:
+def verify_api_key(x_api_key: str | None = Header(None)) -> dict[str, Any]:
     """Verify API key and return tenant info.
 
     A missing or unknown key both yield 401 (not 422), so authenticated
@@ -161,7 +162,7 @@ def verify_api_key(x_api_key: Optional[str] = Header(None)) -> dict[str, Any]:
     return key_info
 
 
-def verify_api_key_optional(x_api_key: Optional[str] = Header(None)) -> dict[str, Any]:
+def verify_api_key_optional(x_api_key: str | None = Header(None)) -> dict[str, Any]:
     """
     Optional API key verification for MCP endpoints.
     If no API key provided, uses default/anonymous tenant.
@@ -391,9 +392,9 @@ def create_app(mcp_server: Server) -> FastAPI:
     # so single-tenant and env-var deployments are unchanged.
     from awx_mcp_server.mcp_server import create_mcp_server as _create_mcp_server
 
-    _tenant_servers: dict[Optional[str], Server] = {None: mcp_server}
+    _tenant_servers: dict[str | None, Server] = {None: mcp_server}
 
-    def _server_for_tenant(tenant_id: Optional[str]) -> Server:
+    def _server_for_tenant(tenant_id: str | None) -> Server:
         key = None if tenant_id in (None, "", "anonymous", "default") else tenant_id
         srv = _tenant_servers.get(key)
         if srv is None:
@@ -797,7 +798,7 @@ def create_app(mcp_server: Server) -> FastAPI:
     # Job Templates
     @app.get("/api/v1/job-templates")
     async def list_job_templates(
-        filter: Optional[str] = None,
+        filter: str | None = None,
         page: int = 1,
         page_size: int = 25,
         tenant_info: dict = Depends(verify_api_key),
@@ -847,7 +848,7 @@ def create_app(mcp_server: Server) -> FastAPI:
     # Jobs
     @app.get("/api/v1/jobs")
     async def list_jobs(
-        status: Optional[str] = None,
+        status: str | None = None,
         page: int = 1,
         page_size: int = 10,
         tenant_info: dict = Depends(verify_api_key),

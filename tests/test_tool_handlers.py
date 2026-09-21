@@ -17,7 +17,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from awx_mcp_server.domain import AWXClientError, JobStatus, NoActiveEnvironmentError
 from awx_mcp_server.http_server import process_mcp_message
 from awx_mcp_server.mcp_server import create_mcp_server

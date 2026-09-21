@@ -3,16 +3,17 @@
 import asyncio
 import json
 import sys
+
 import click
 from rich.console import Console
-from rich.table import Table
 from rich.json import JSON
+from rich.table import Table
 
 from awx_mcp_server import __version__
-from awx_mcp_server.http_server import start_http_server
-from awx_mcp_server.storage import ConfigManager, CredentialStore
 from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import CredentialType
+from awx_mcp_server.http_server import start_http_server
+from awx_mcp_server.storage import ConfigManager, CredentialStore
 
 console = Console()
 
@@ -21,7 +22,6 @@ console = Console()
 @click.version_option(version=__version__)
 def main():
     """AWX MCP Remote Server - CLI and API for AWX/AAP automation."""
-    pass
 
 
 @main.command()
@@ -66,7 +66,6 @@ async def get_client():
 @main.group()
 def env():
     """Manage AWX environments."""
-    pass
 
 
 @env.command("list")
@@ -114,7 +113,6 @@ def env_test(env_name):
 @main.group()
 def templates():
     """Manage job templates."""
-    pass
 
 
 @templates.command("list")
@@ -183,7 +181,6 @@ def templates_get(name):
 @main.group()
 def jobs():
     """Manage jobs."""
-    pass
 
 
 @jobs.command("list")
@@ -312,7 +309,6 @@ def jobs_events(job_id, page, page_size):
 @main.group()
 def projects():
     """Manage projects."""
-    pass
 
 
 @projects.command("list")
@@ -358,7 +354,6 @@ def projects_update(name):
 @main.group()
 def inventories():
     """Manage inventories."""
-    pass
 
 
 @inventories.command("list")

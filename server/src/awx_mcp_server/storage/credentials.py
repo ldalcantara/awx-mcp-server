@@ -1,8 +1,8 @@
 """Secure credential storage using OS keyring."""
 
-import keyring
-from typing import Optional
 from uuid import UUID
+
+import keyring
 
 from awx_mcp_server.domain import CredentialError, CredentialType
 
@@ -12,7 +12,7 @@ class CredentialStore:
 
     SERVICE_NAME = "awx-mcp-server"
 
-    def __init__(self, tenant_id: Optional[str] = None):
+    def __init__(self, tenant_id: str | None = None):
         """
         Initialize credential store.
 
@@ -30,7 +30,7 @@ class CredentialStore:
         self,
         env_id: UUID,
         credential_type: CredentialType,
-        username: Optional[str],
+        username: str | None,
         secret: str,
     ) -> None:
         """
@@ -64,7 +64,7 @@ class CredentialStore:
 
     def get_credential(
         self, env_id: UUID, credential_type: CredentialType
-    ) -> tuple[Optional[str], str]:
+    ) -> tuple[str | None, str]:
         """
         Retrieve credential securely.
 

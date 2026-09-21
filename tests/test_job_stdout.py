@@ -2,9 +2,10 @@
 
 import asyncio
 import sys
-from awx_mcp_server.storage import ConfigManager, CredentialStore
+
 from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import CredentialType
+from awx_mcp_server.storage import ConfigManager, CredentialStore
 
 
 async def test_job_stdout():

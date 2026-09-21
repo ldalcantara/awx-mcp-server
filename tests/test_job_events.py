@@ -2,9 +2,10 @@
 
 import asyncio
 import sys
-from awx_mcp_server.storage import ConfigManager, CredentialStore
+
 from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import CredentialType
+from awx_mcp_server.storage import ConfigManager, CredentialStore
 
 
 async def test_job_events():
@@ -109,28 +110,29 @@ async def test_job_events():
 
             print(f"{emoji} {event_type}")
 
-            if "task" in event and event["task"]:
+            if event.get("task"):
                 print(f"   Task: {event['task']}")
 
-            if "host" in event and event["host"]:
+            if event.get("host"):
                 print(f"   Host: {event['host']}")
 
-            if "play" in event and event["play"]:
+            if event.get("play"):
                 print(f"   Play: {event['play']}")
 
             # Show error details for failed events
-            if "failed" in event_type or event.get("failed", False):
-                if "event_data" in event and "res" in event["event_data"]:
-                    res = event["event_data"]["res"]
+            if ("failed" in event_type or event.get("failed", False)) and (
+                "event_data" in event and "res" in event["event_data"]
+            ):
+                res = event["event_data"]["res"]
 
-                    if "msg" in res:
-                        print(f"   Message: {res['msg']}")
+                if "msg" in res:
+                    print(f"   Message: {res['msg']}")
 
-                    if "stderr" in res and res["stderr"]:
-                        print(f"   Stderr: {res['stderr'][:200]}")
+                if res.get("stderr"):
+                    print(f"   Stderr: {res['stderr'][:200]}")
 
-                    if "stdout" in res and res["stdout"]:
-                        print(f"   Stdout: {res['stdout'][:200]}")
+                if res.get("stdout"):
+                    print(f"   Stdout: {res['stdout'][:200]}")
 
             print()
 

@@ -82,6 +82,35 @@ target-version = ["py310"]
 line-length = 88
 target-version = "py310"
 
+[tool.ruff.lint]
+# Rules deliberately not enforced. Each one is a decision, not a backlog: if a
+# finding here is ever worth fixing, delete the line and fix it, don't add a
+# per-line noqa.
+ignore = [
+    # Blind `except Exception` at a tool/CLI boundary is the point: a handler
+    # turns any upstream failure into an MCP error payload, and the server must
+    # not die because AWX returned something unexpected.
+    "BLE001",
+    # `Depends(...)` in a parameter default is how FastAPI declares dependencies;
+    # the rule's advice does not apply to this framework.
+    "B008",
+    # `datetime.utcnow()`. Real finding, deliberately deferred: the fix changes
+    # every timestamp this server emits (naive -> "+00:00"), which is an API
+    # change for anything parsing /health or the monitoring payloads. TODO: move
+    # to timezone-aware datetimes in a change of its own.
+    "DTZ003",
+    # `try/except/pass` when parsing an error body: the code falls back to the
+    # raw response text and logs it on the next line, so there is nothing to
+    # report that is not already reported.
+    "S110",
+    # `__all__` is grouped by category with comments, which reads better than
+    # one alphabetical list.
+    "RUF022",
+    # `__aenter__` returning `Self` needs Python 3.11 or a typing_extensions
+    # dependency; this package targets 3.10.
+    "PYI034",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"

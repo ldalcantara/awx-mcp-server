@@ -2,12 +2,12 @@
 
 import time
 from collections import defaultdict
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
 import structlog
+from prometheus_client import Counter, Gauge, Histogram, generate_latest
 
 logger = structlog.get_logger(__name__)
 
@@ -62,8 +62,8 @@ class RequestMetrics:
     status_code: int
     duration: float
     timestamp: datetime
-    tool_name: Optional[str] = None
-    error: Optional[str] = None
+    tool_name: str | None = None
+    error: str | None = None
 
 
 @dataclass
@@ -77,8 +77,8 @@ class TenantStats:
     total_errors: int = 0
     active_connections: int = 0
     avg_response_time: float = 0.0
-    last_activity: Optional[datetime] = None
-    tool_usage: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    last_activity: datetime | None = None
+    tool_usage: dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
 
 class MonitoringService:
@@ -86,10 +86,10 @@ class MonitoringService:
 
     def __init__(self):
         """Initialize monitoring service."""
-        self.tenant_stats: Dict[str, TenantStats] = defaultdict(
+        self.tenant_stats: dict[str, TenantStats] = defaultdict(
             lambda: TenantStats(tenant_id="")
         )
-        self.request_history: List[RequestMetrics] = []
+        self.request_history: list[RequestMetrics] = []
         self.max_history = 1000  # Keep last 1000 requests
 
     def record_request(
@@ -99,9 +99,9 @@ class MonitoringService:
         method: str,
         status_code: int,
         duration: float,
-        tool_name: Optional[str] = None,
-        error: Optional[str] = None,
-        error_type: Optional[str] = None,
+        tool_name: str | None = None,
+        error: str | None = None,
+        error_type: str | None = None,
     ):
         """Record a request metric."""
         # Update Prometheus metrics
@@ -224,7 +224,7 @@ class MonitoringService:
 
         ACTIVE_CONNECTIONS.labels(tenant_id=tenant_id).set(stats.active_connections)
 
-    def get_tenant_stats(self, tenant_id: str) -> Dict[str, Any]:
+    def get_tenant_stats(self, tenant_id: str) -> dict[str, Any]:
         """Get statistics for a tenant."""
         stats = self.tenant_stats.get(tenant_id)
         if not stats:
@@ -244,17 +244,15 @@ class MonitoringService:
             "tool_usage": dict(stats.tool_usage),
         }
 
-    def get_all_stats(self) -> List[Dict[str, Any]]:
+    def get_all_stats(self) -> list[dict[str, Any]]:
         """Get statistics for all tenants."""
-        return [
-            self.get_tenant_stats(tenant_id) for tenant_id in self.tenant_stats.keys()
-        ]
+        return [self.get_tenant_stats(tenant_id) for tenant_id in self.tenant_stats]
 
     def get_recent_requests(
         self,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get recent requests."""
         requests = self.request_history
 
@@ -294,7 +292,7 @@ class RequestTimer:
         tenant_id: str,
         endpoint: str,
         method: str,
-        tool_name: Optional[str] = None,
+        tool_name: str | None = None,
     ):
         """Initialize request timer."""
         self.tenant_id = tenant_id

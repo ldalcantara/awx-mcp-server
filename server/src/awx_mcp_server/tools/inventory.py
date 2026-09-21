@@ -184,7 +184,7 @@ TOOLS: list[Tool] = [
 async def _h_awx_inventories_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         inventories = await client.list_inventories(
             name_filter=arguments.get("filter"),
@@ -207,7 +207,7 @@ async def _h_awx_inventories_list(
 async def _h_awx_inventory_create(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         inventory = await client.create_inventory(
             name=arguments["name"],
@@ -226,7 +226,7 @@ async def _h_awx_inventory_create(
 async def _h_awx_inventory_delete(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     inventory_id = arguments["inventory_id"]
 
     async with client:
@@ -244,7 +244,7 @@ async def _h_awx_inventory_delete(
 async def _h_awx_inventory_groups_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     inventory_id = arguments["inventory_id"]
 
     async with client:
@@ -267,7 +267,7 @@ async def _h_awx_inventory_groups_list(
 async def _h_awx_inventory_group_create(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     inventory_id = arguments["inventory_id"]
 
     async with client:
@@ -288,7 +288,7 @@ async def _h_awx_inventory_group_create(
 async def _h_awx_inventory_group_delete(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     group_id = arguments["group_id"]
 
     async with client:
@@ -301,7 +301,7 @@ async def _h_awx_inventory_group_delete(
 async def _h_awx_inventory_hosts_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     inventory_id = arguments["inventory_id"]
 
     async with client:
@@ -324,7 +324,7 @@ async def _h_awx_inventory_hosts_list(
 async def _h_awx_inventory_host_create(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     inventory_id = arguments["inventory_id"]
 
     async with client:
@@ -345,7 +345,7 @@ async def _h_awx_inventory_host_create(
 async def _h_awx_inventory_host_delete(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     host_id = arguments["host_id"]
 
     async with client:

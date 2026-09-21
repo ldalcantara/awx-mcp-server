@@ -9,11 +9,10 @@ Covers the correctness fixes:
 
 import json
 import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-
 from awx_mcp_server.clients.rest_client import RestAWXClient
 from awx_mcp_server.domain import (
     AWXClientError,

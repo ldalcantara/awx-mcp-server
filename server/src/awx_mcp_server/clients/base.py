@@ -2,7 +2,7 @@
 
 import json
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any
 
 from awx_mcp_server.domain import (
     Inventory,
@@ -40,85 +40,73 @@ class AWXClient(ABC):
         Returns:
             True if connection successful
         """
-        pass
 
     @abstractmethod
     async def list_job_templates(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[JobTemplate]:
         """List job templates."""
-        pass
 
     @abstractmethod
     async def get_job_template(self, template_id: int) -> JobTemplate:
         """Get job template by ID."""
-        pass
 
     @abstractmethod
     async def list_projects(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[Project]:
         """List projects."""
-        pass
 
     @abstractmethod
     async def get_project(self, project_id: int) -> Project:
         """Get project by ID."""
-        pass
 
     @abstractmethod
     async def update_project(
         self, project_id: int, wait: bool = True
     ) -> dict[str, Any]:
         """Update project from SCM."""
-        pass
 
     @abstractmethod
     async def list_inventories(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[Inventory]:
         """List inventories."""
-        pass
 
     @abstractmethod
     async def launch_job(
         self,
         template_id: int,
-        extra_vars: Optional[dict[str, Any]] = None,
-        limit: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        skip_tags: Optional[list[str]] = None,
+        extra_vars: dict[str, Any] | None = None,
+        limit: str | None = None,
+        tags: list[str] | None = None,
+        skip_tags: list[str] | None = None,
     ) -> Job:
         """Launch job from template."""
-        pass
 
     @abstractmethod
     async def get_job(self, job_id: int) -> Job:
         """Get job by ID."""
-        pass
 
     @abstractmethod
     async def list_jobs(
         self,
-        status: Optional[str] = None,
-        created_after: Optional[str] = None,
+        status: str | None = None,
+        created_after: str | None = None,
         page: int = 1,
         page_size: int = 25,
     ) -> list[Job]:
         """List jobs."""
-        pass
 
     @abstractmethod
     async def cancel_job(self, job_id: int) -> dict[str, Any]:
         """Cancel running job."""
-        pass
 
     @abstractmethod
     async def get_job_stdout(
-        self, job_id: int, format: str = "txt", tail_lines: Optional[int] = None
+        self, job_id: int, format: str = "txt", tail_lines: int | None = None
     ) -> str:
         """Get job stdout."""
-        pass
 
     @abstractmethod
     async def get_job_events(
@@ -129,58 +117,50 @@ class AWXClient(ABC):
         page_size: int = 100,
     ) -> list[JobEvent]:
         """Get job events."""
-        pass
 
     # Workflow Job Templates
 
     @abstractmethod
     async def list_workflow_job_templates(
-        self, name_filter: Optional[str] = None, page: int = 1, page_size: int = 25
+        self, name_filter: str | None = None, page: int = 1, page_size: int = 25
     ) -> list[WorkflowJobTemplate]:
         """List workflow job templates."""
-        pass
 
     @abstractmethod
     async def get_workflow_job_template(self, template_id: int) -> WorkflowJobTemplate:
         """Get workflow job template by ID."""
-        pass
 
     @abstractmethod
     async def launch_workflow_job(
         self,
         template_id: int,
-        extra_vars: Optional[dict[str, Any]] = None,
-        limit: Optional[str] = None,
-        tags: Optional[list[str]] = None,
-        skip_tags: Optional[list[str]] = None,
+        extra_vars: dict[str, Any] | None = None,
+        limit: str | None = None,
+        tags: list[str] | None = None,
+        skip_tags: list[str] | None = None,
     ) -> WorkflowJob:
         """Launch workflow job from template."""
-        pass
 
     @abstractmethod
     async def get_workflow_job(self, job_id: int) -> WorkflowJob:
         """Get workflow job by ID."""
-        pass
 
     @abstractmethod
     async def list_workflow_jobs(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         page: int = 1,
         page_size: int = 25,
-        workflow_template_id: Optional[int] = None,
+        workflow_template_id: int | None = None,
     ) -> list[WorkflowJob]:
         """List workflow jobs."""
-        pass
 
     @abstractmethod
     async def cancel_workflow_job(self, job_id: int) -> dict[str, Any]:
         """Cancel running workflow job."""
-        pass
 
     @abstractmethod
     async def get_workflow_job_nodes(
         self, job_id: int, page: int = 1, page_size: int = 100
     ) -> list[WorkflowJobNode]:
         """Get workflow job nodes (individual steps)."""
-        pass

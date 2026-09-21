@@ -5,11 +5,10 @@ gating (fail-closed + constant-time), CORS allowlist, body-size limit, docs
 gating, metrics auth, and the SSRF guard on X-AWX-Base-URL.
 """
 
-import pytest
-from fastapi.testclient import TestClient
-
 import awx_mcp_server.http_server as hs
+import pytest
 from awx_mcp_server.mcp_server import create_mcp_server
+from fastapi.testclient import TestClient
 
 INIT = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
 

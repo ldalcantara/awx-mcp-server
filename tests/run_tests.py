@@ -10,8 +10,8 @@ Usage:
     python run_tests.py all                # Run pytest suite
 """
 
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -80,7 +80,7 @@ def main():
             "--color=yes",
         ]
 
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, check=False)
         return result.returncode
 
     # Run pytest with custom args
@@ -92,7 +92,7 @@ def main():
             str(tests_dir),
         ] + sys.argv[2:]
 
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, check=False)
         return result.returncode
 
     # Run specific test
@@ -106,7 +106,7 @@ def main():
         print()
 
         cmd = [sys.executable, str(test_path)] + sys.argv[2:]
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, check=False)
 
         return result.returncode
 

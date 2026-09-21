@@ -339,7 +339,7 @@ async def handle_awx_command(message, say):
 
 ## 🔧 Available AWX Operations
 
-Both the VS Code extension and the MCP server support all **76 tools** — **61 AWX operations** (below) plus **15 local Ansible development tools** (see [`server/README.md`](server/README.md)). The [Query Reference](AWX_MCP_QUERY_REFERENCE.md) has example prompts for every tool.
+Both the VS Code extension and the MCP server support all **81 tools** — **66 AWX operations** (below) plus **15 local Ansible development tools** (see [`server/README.md`](server/README.md)). The [Query Reference](AWX_MCP_QUERY_REFERENCE.md) has example prompts for every tool.
 
 ### Environment Management
 - `env_list` - List configured AWX environments
@@ -406,6 +406,13 @@ Both the VS Code extension and the MCP server support all **76 tools** — **61 
 - `awx_workflow_job_nodes` - Get per-node details of a workflow job
 - `awx_workflow_job_relaunch` - Relaunch a previous workflow job
 - `awx_workflow_job_delete` - Delete a workflow job record
+
+### Schedules
+- `awx_schedules_list` - List schedules across every template, workflow, project and inventory source
+- `awx_schedule_get` - Get one schedule (rule, next run, enabled)
+- `awx_schedule_create` - Schedule a template/workflow/project/inventory source to run automatically
+- `awx_schedule_update` - Change a schedule's rule or variables, or pause it
+- `awx_schedule_delete` - Delete a schedule
 
 ### Notifications
 - `awx_notification_templates_list` - List notification templates

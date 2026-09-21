@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Schedule tools** — `awx_schedules_list`, `awx_schedule_get`,
+  `awx_schedule_create`, `awx_schedule_update`, `awx_schedule_delete`, over
+  `/api/v2/schedules/`. The only schedule tool until now was
+  `awx_workflow_template_schedules`, which shows one workflow's slice; an
+  instance whose schedules hang off job templates, project updates and
+  inventory sources reported nothing scheduled at all. Listing accepts a name
+  filter and a `unified_job_template` id, and every response names what the
+  schedule runs, its recurrence rule, whether it is enabled and the next run.
+
 ### Fixed
 - **Adopt ruff 0.16 across the whole repository.** The linter now runs the
   0.16 rule set: 325 findings auto-fixed (import order, `Optional[X]` ->

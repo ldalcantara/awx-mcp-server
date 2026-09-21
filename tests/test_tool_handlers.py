@@ -530,3 +530,102 @@ async def test_missing_required_argument(invoke):
     assert "template_id" in text
     # The client method must never be reached when a required arg is missing.
     client.get_workflow_job_template.assert_not_awaited()
+
+
+# --- Schedule tools (client.<method>, dicts) ------------------------------
+
+
+def _sched(**over):
+    base = {
+        "id": 7,
+        "name": "patch-full-vm-dns-d1",
+        "enabled": True,
+        "rrule": "DTSTART;TZID=America/New_York:20260812T040000 RRULE:INTERVAL=1;FREQ=WEEKLY;BYDAY=WE",
+        "next_run": "2026-09-23T08:00:00Z",
+        "description": "",
+        "summary_fields": {
+            "unified_job_template": {
+                "name": "[PROD] infra-linux-vm-patching",
+                "unified_job_type": "job",
+            }
+        },
+    }
+    base.update(over)
+    return base
+
+
+async def test_schedules_list(invoke):
+    client = FakeClient(rest={"list_schedules": AsyncMock(return_value=[_sched()])})
+    text = await invoke("awx_schedules_list", {}, client)
+    assert_ok(text)
+    assert "Schedules (1)" in text
+    assert "ID: 7 - patch-full-vm-dns-d1" in text
+    assert "Runs: [PROD] infra-linux-vm-patching (job)" in text
+    assert "Enabled: yes" in text
+    assert "Next run: 2026-09-23T08:00:00Z" in text
+    client.list_schedules.assert_awaited_once_with(
+        name_filter=None, unified_job_template=None, page=1, page_size=25
+    )
+
+
+async def test_schedules_list_filtered_by_template(invoke):
+    client = FakeClient(rest={"list_schedules": AsyncMock(return_value=[])})
+    text = await invoke(
+        "awx_schedules_list", {"unified_job_template": 42, "filter": "patch"}, client
+    )
+    assert_ok(text)
+    assert "Schedules (0)" in text
+    client.list_schedules.assert_awaited_once_with(
+        name_filter="patch", unified_job_template=42, page=1, page_size=25
+    )
+
+
+async def test_schedule_get_shows_paused(invoke):
+    client = FakeClient(
+        rest={"get_schedule": AsyncMock(return_value=_sched(enabled=False))}
+    )
+    text = await invoke("awx_schedule_get", {"schedule_id": 7}, client)
+    assert_ok(text)
+    assert "Schedule 7:" in text
+    assert "Enabled: no (paused)" in text
+    client.get_schedule.assert_awaited_once_with(7)
+
+
+async def test_schedule_create(invoke):
+    client = FakeClient(rest={"create_schedule": AsyncMock(return_value=_sched())})
+    rrule = "DTSTART;TZID=America/New_York:20260812T040000 RRULE:INTERVAL=1;FREQ=WEEKLY;BYDAY=WE"
+    text = await invoke(
+        "awx_schedule_create",
+        {"name": "patch-full-vm-dns-d1", "unified_job_template": 42, "rrule": rrule},
+        client,
+    )
+    assert_ok(text)
+    assert "Schedule created successfully" in text
+    assert "ID: 7" in text
+    kwargs = client.create_schedule.await_args.kwargs
+    assert kwargs["name"] == "patch-full-vm-dns-d1"
+    assert kwargs["unified_job_template"] == 42
+    assert kwargs["rrule"] == rrule
+    assert kwargs["enabled"] is True
+
+
+async def test_schedule_update_pauses(invoke):
+    client = FakeClient(
+        rest={"update_schedule": AsyncMock(return_value=_sched(enabled=False))}
+    )
+    text = await invoke(
+        "awx_schedule_update", {"schedule_id": 7, "enabled": False}, client
+    )
+    assert_ok(text)
+    assert "Schedule 7 updated successfully" in text
+    assert "Enabled: no (paused)" in text
+    # schedule_id goes positionally; everything else is the partial update
+    client.update_schedule.assert_awaited_once_with(7, enabled=False)
+
+
+async def test_schedule_delete(invoke):
+    client = FakeClient(rest={"delete_schedule": AsyncMock(return_value=None)})
+    text = await invoke("awx_schedule_delete", {"schedule_id": 7}, client)
+    assert_ok(text)
+    assert "Schedule 7 deleted successfully" in text
+    client.delete_schedule.assert_awaited_once_with(7)

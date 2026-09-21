@@ -1223,6 +1223,78 @@ class RestAWXClient(AWXClient):
             f"/api/v2/workflow_job_templates/{template_id}/schedules/", params
         )
 
+    # --- Schedules -------------------------------------------------------
+    #
+    # /api/v2/schedules/ is the whole estate: the schedules attached to job
+    # templates, workflows, project updates and inventory sources all live
+    # here, keyed by `unified_job_template`. The per-template endpoints above
+    # only ever show one template's slice, so a caller asking "what runs
+    # automatically?" needs this one.
+
+    async def list_schedules(
+        self,
+        name_filter: str | None = None,
+        unified_job_template: int | None = None,
+        page: int = 1,
+        page_size: int = 25,
+    ) -> list[dict[str, Any]]:
+        """List schedules, optionally narrowed to one name or one template."""
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if name_filter:
+            params["name__icontains"] = name_filter
+        if unified_job_template is not None:
+            params["unified_job_template"] = unified_job_template
+
+        return await self._get_all("/api/v2/schedules/", params)
+
+    async def get_schedule(self, schedule_id: int) -> dict[str, Any]:
+        """Get a schedule by ID."""
+        return await self._request("GET", f"/api/v2/schedules/{schedule_id}/")
+
+    async def create_schedule(
+        self,
+        name: str,
+        unified_job_template: int,
+        rrule: str,
+        description: str = "",
+        enabled: bool = True,
+        extra_data: dict[str, Any] | None = None,
+        limit: str | None = None,
+        job_tags: str | None = None,
+        skip_tags: str | None = None,
+        inventory: int | None = None,
+    ) -> dict[str, Any]:
+        """Create a schedule on a job template, workflow, project or inventory source."""
+        payload: dict[str, Any] = {
+            "name": name,
+            "unified_job_template": unified_job_template,
+            "rrule": rrule,
+            "description": description,
+            "enabled": enabled,
+        }
+        for key, value in (
+            ("extra_data", extra_data),
+            ("limit", limit),
+            ("job_tags", job_tags),
+            ("skip_tags", skip_tags),
+            ("inventory", inventory),
+        ):
+            if value is not None:
+                payload[key] = value
+
+        return await self._request("POST", "/api/v2/schedules/", json=payload)
+
+    async def update_schedule(self, schedule_id: int, **kwargs: Any) -> dict[str, Any]:
+        """Update a schedule (partial update)."""
+        payload = {k: v for k, v in kwargs.items() if v is not None}
+        return await self._request(
+            "PATCH", f"/api/v2/schedules/{schedule_id}/", json=payload
+        )
+
+    async def delete_schedule(self, schedule_id: int) -> None:
+        """Delete a schedule."""
+        await self._request("DELETE", f"/api/v2/schedules/{schedule_id}/")
+
     async def get_workflow_job_template_launch_config(
         self, template_id: int
     ) -> dict[str, Any]:

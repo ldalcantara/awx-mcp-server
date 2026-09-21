@@ -6,7 +6,7 @@
 [![PyPI](https://img.shields.io/pypi/v/awx-mcp-server?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/awx-mcp-server/)
 [![MCP Registry](https://img.shields.io/badge/MCP-Registry-green?style=for-the-badge)](https://registry.modelcontextprotocol.io/)
 
-Control AWX/Ansible Tower through natural language - 76 tools for automation.
+Control AWX/Ansible Tower through natural language - 81 tools for automation.
 
 ## Overview
 
@@ -218,7 +218,7 @@ With the server configured, you can use natural language like:
 - **[OS Compatibility](../OS_COMPATIBILITY.md)** - Windows, macOS, and Linux installation guides
 
 ### Advanced
-- **[Query Reference](../AWX_MCP_QUERY_REFERENCE.md)** - All 76 tools with examples
+- **[Query Reference](../AWX_MCP_QUERY_REFERENCE.md)** - All 81 tools with examples
 - **[Vault Integration](VAULT_INTEGRATION.md)** - HashiCorp Vault for secrets management
 - **[GitHub Installation](GITHUB_INSTALLATION.md)** - Install directly from GitHub
 

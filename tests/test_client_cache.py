@@ -7,7 +7,6 @@ so the per-handler ``async with client`` blocks don't close it.
 """
 
 import uuid
-
 from unittest.mock import AsyncMock
 
 from awx_mcp_server.clients import RestAWXClient

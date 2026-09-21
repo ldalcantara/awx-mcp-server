@@ -207,7 +207,7 @@ async def _h_awx_job_launch(ctx: ToolContext, arguments: Any) -> list[TextConten
 
 
 async def _h_awx_job_get(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -228,7 +228,7 @@ async def _h_awx_job_get(ctx: ToolContext, arguments: Any) -> list[TextContent]:
 
 
 async def _h_awx_jobs_list(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
 
     async with client:
         jobs = await client.list_jobs(
@@ -251,7 +251,7 @@ async def _h_awx_jobs_list(ctx: ToolContext, arguments: Any) -> list[TextContent
 
 
 async def _h_awx_job_cancel(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -261,7 +261,7 @@ async def _h_awx_job_cancel(ctx: ToolContext, arguments: Any) -> list[TextConten
 
 
 async def _h_awx_job_delete(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:
@@ -273,7 +273,7 @@ async def _h_awx_job_delete(ctx: ToolContext, arguments: Any) -> list[TextConten
 
 
 async def _h_awx_job_stdout(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
     format = arguments.get("format", "txt")
     tail_lines = arguments.get("tail_lines")
@@ -286,7 +286,7 @@ async def _h_awx_job_stdout(ctx: ToolContext, arguments: Any) -> list[TextConten
 
 
 async def _h_awx_job_events(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
     failed_only = arguments.get("failed_only", False)
 
@@ -316,7 +316,7 @@ async def _h_awx_job_events(ctx: ToolContext, arguments: Any) -> list[TextConten
 async def _h_awx_job_failure_summary(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     job_id = arguments["job_id"]
 
     async with client:

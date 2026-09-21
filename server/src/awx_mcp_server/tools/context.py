@@ -7,8 +7,8 @@ modules instead of one god-file. ``make_client`` is provided by
 (tests monkeypatch ``awx_mcp_server.mcp_server.RestAWXClient``).
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from awx_mcp_server.clients import RestAWXClient
 from awx_mcp_server.domain import EnvironmentConfig

@@ -1,6 +1,7 @@
 """Test AWX connection and fetch resources"""
 
 import os
+import sys
 
 import httpx
 import urllib3
@@ -43,7 +44,7 @@ def test_connection():
             return False
 
     except Exception as e:
-        print(f"❌ Connection error: {str(e)}")
+        print(f"❌ Connection error: {e!s}")
         return False
 
     return True
@@ -79,7 +80,7 @@ def fetch_job_templates():
             return False
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error: {e!s}")
         return False
 
 
@@ -116,7 +117,7 @@ def fetch_jobs():
             return False
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error: {e!s}")
         return False
 
 
@@ -150,7 +151,7 @@ def fetch_projects():
             return False
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error: {e!s}")
         return False
 
 
@@ -184,7 +185,7 @@ def fetch_inventories():
             return False
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error: {e!s}")
         return False
 
 
@@ -216,7 +217,7 @@ def fetch_hosts():
             return False
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error: {e!s}")
         return False
 
 
@@ -253,7 +254,7 @@ def fetch_credentials():
             return False
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error: {e!s}")
         return False
 
 
@@ -287,7 +288,7 @@ def fetch_schedules():
             return False
 
     except Exception as e:
-        print(f"❌ Error: {str(e)}")
+        print(f"❌ Error: {e!s}")
         return False
 
 
@@ -295,7 +296,7 @@ if __name__ == "__main__":
     # Test connection first
     if not test_connection():
         print("\n❌ Connection test failed. Please check your AWX URL and token.")
-        exit(1)
+        sys.exit(1)
 
     # Fetch all resources
     results = {

@@ -6,15 +6,15 @@ Each module exposes ``TOOLS`` (its ``Tool`` schemas) and ``register(ctx)``
 
 from awx_mcp_server.tools import (
     env,
-    system,
-    templates,
-    projects,
     inventory,
     jobs,
-    workflows,
-    notifications,
     local_ansible,
     local_projects,
+    notifications,
+    projects,
+    system,
+    templates,
+    workflows,
 )
 
 TOOL_MODULES = [

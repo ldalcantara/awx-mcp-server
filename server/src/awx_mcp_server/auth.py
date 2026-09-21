@@ -3,7 +3,6 @@
 import hashlib
 import secrets
 from datetime import datetime, timedelta
-from typing import Optional
 
 from pydantic import BaseModel
 
@@ -16,8 +15,8 @@ class APIKey(BaseModel):
     name: str
     tenant_id: str
     created_at: datetime
-    expires_at: Optional[datetime] = None
-    last_used: Optional[datetime] = None
+    expires_at: datetime | None = None
+    last_used: datetime | None = None
     is_active: bool = True
     permissions: list[str] = ["read", "write", "execute"]
 
@@ -33,8 +32,8 @@ class APIKeyManager:
         self,
         name: str,
         tenant_id: str,
-        expires_days: Optional[int] = 90,
-        permissions: Optional[list[str]] = None,
+        expires_days: int | None = 90,
+        permissions: list[str] | None = None,
     ) -> tuple[str, APIKey]:
         """
         Generate a new API key.
@@ -63,7 +62,7 @@ class APIKeyManager:
         self.keys[key_hash] = api_key
         return plaintext_key, api_key
 
-    def verify_key(self, plaintext_key: str) -> Optional[APIKey]:
+    def verify_key(self, plaintext_key: str) -> APIKey | None:
         """
         Verify an API key and return key info.
 
@@ -96,7 +95,7 @@ class APIKeyManager:
             return True
         return False
 
-    def list_keys(self, tenant_id: Optional[str] = None) -> list[APIKey]:
+    def list_keys(self, tenant_id: str | None = None) -> list[APIKey]:
         """List all API keys, optionally filtered by tenant."""
         keys = list(self.keys.values())
         if tenant_id:
@@ -112,7 +111,7 @@ class APIKeyManager:
 class TenantContext:
     """Thread-local tenant context for multi-tenancy."""
 
-    _current_tenant: Optional[str] = None
+    _current_tenant: str | None = None
 
     @classmethod
     def set_tenant(cls, tenant_id: str):
@@ -120,7 +119,7 @@ class TenantContext:
         cls._current_tenant = tenant_id
 
     @classmethod
-    def get_tenant(cls) -> Optional[str]:
+    def get_tenant(cls) -> str | None:
         """Get current tenant ID."""
         return cls._current_tenant
 

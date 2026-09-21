@@ -7,7 +7,7 @@ and roles locally before pushing to AWX via SCM.
 import asyncio
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 DEFAULT_WORKSPACE = Path.home() / ".awx-mcp" / "playbooks"
 
 
-def _ensure_workspace(workspace: Optional[str] = None) -> Path:
+def _ensure_workspace(workspace: str | None = None) -> Path:
     """Ensure workspace directory exists and return path."""
     ws = Path(workspace) if workspace else DEFAULT_WORKSPACE
     ws.mkdir(parents=True, exist_ok=True)
@@ -29,7 +29,7 @@ def _ensure_workspace(workspace: Optional[str] = None) -> Path:
 def create_playbook(
     name: str,
     content: str | dict | list,
-    workspace: Optional[str] = None,
+    workspace: str | None = None,
     overwrite: bool = False,
 ) -> dict[str, Any]:
     """
@@ -104,8 +104,8 @@ def create_playbook(
 
 async def validate_playbook(
     playbook: str,
-    workspace: Optional[str] = None,
-    inventory: Optional[str] = None,
+    workspace: str | None = None,
+    inventory: str | None = None,
 ) -> dict[str, Any]:
     """
     Validate playbook syntax using ansible-playbook --syntax-check.
@@ -178,12 +178,12 @@ async def validate_playbook(
 
 async def run_playbook(
     playbook: str,
-    workspace: Optional[str] = None,
-    inventory: Optional[str] = None,
-    extra_vars: Optional[dict[str, Any]] = None,
-    limit: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-    skip_tags: Optional[list[str]] = None,
+    workspace: str | None = None,
+    inventory: str | None = None,
+    extra_vars: dict[str, Any] | None = None,
+    limit: str | None = None,
+    tags: list[str] | None = None,
+    skip_tags: list[str] | None = None,
     check_mode: bool = False,
     verbose: int = 0,
 ) -> dict[str, Any]:
@@ -278,10 +278,10 @@ async def run_playbook(
 
 async def run_adhoc_task(
     module: str,
-    args: Optional[str] = None,
+    args: str | None = None,
     hosts: str = "localhost",
-    inventory: Optional[str] = None,
-    extra_vars: Optional[dict[str, Any]] = None,
+    inventory: str | None = None,
+    extra_vars: dict[str, Any] | None = None,
     connection: str = "local",
     become: bool = False,
 ) -> dict[str, Any]:
@@ -357,9 +357,9 @@ async def run_adhoc_task(
 async def run_role(
     role: str,
     hosts: str = "localhost",
-    workspace: Optional[str] = None,
-    inventory: Optional[str] = None,
-    extra_vars: Optional[dict[str, Any]] = None,
+    workspace: str | None = None,
+    inventory: str | None = None,
+    extra_vars: dict[str, Any] | None = None,
     connection: str = "local",
 ) -> dict[str, Any]:
     """
@@ -410,8 +410,8 @@ async def run_role(
 
 def create_role_structure(
     name: str,
-    workspace: Optional[str] = None,
-    include_dirs: Optional[list[str]] = None,
+    workspace: str | None = None,
+    include_dirs: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Scaffold an Ansible role directory structure.
@@ -500,7 +500,7 @@ def create_role_structure(
     }
 
 
-def list_playbooks(workspace: Optional[str] = None) -> dict[str, Any]:
+def list_playbooks(workspace: str | None = None) -> dict[str, Any]:
     """
     List playbooks in workspace.
 
@@ -538,7 +538,7 @@ def list_playbooks(workspace: Optional[str] = None) -> dict[str, Any]:
     }
 
 
-def list_roles(workspace: Optional[str] = None) -> dict[str, Any]:
+def list_roles(workspace: str | None = None) -> dict[str, Any]:
     """
     List roles in workspace.
 
@@ -575,7 +575,7 @@ def list_roles(workspace: Optional[str] = None) -> dict[str, Any]:
 
 async def ansible_inventory_list(
     inventory: str = "localhost,",
-    workspace: Optional[str] = None,
+    workspace: str | None = None,
 ) -> dict[str, Any]:
     """
     List inventory hosts and groups using ansible-inventory.

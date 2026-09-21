@@ -3,7 +3,7 @@
 import asyncio
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     from kubernetes import client, config
@@ -42,10 +42,10 @@ class TaskPodManager:
     async def execute_task(
         self,
         task_type: str,
-        task_params: Dict[str, Any],
+        task_params: dict[str, Any],
         tenant_id: str,
         timeout: int = 300,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute AWX task in a Kubernetes Job pod.
 
@@ -154,7 +154,7 @@ class TaskPodManager:
 
         return result
 
-    async def _wait_for_job(self, job_name: str, timeout: int) -> Dict[str, Any]:
+    async def _wait_for_job(self, job_name: str, timeout: int) -> dict[str, Any]:
         """Wait for Job to complete and get result from pod logs."""
         start_time = asyncio.get_event_loop().time()
 
@@ -225,10 +225,10 @@ class TaskPodManager:
 
 
 # Global task pod manager instance
-_task_pod_manager: Optional[TaskPodManager] = None
+_task_pod_manager: TaskPodManager | None = None
 
 
-def get_task_pod_manager() -> Optional[TaskPodManager]:
+def get_task_pod_manager() -> TaskPodManager | None:
     """Get global task pod manager instance."""
     global _task_pod_manager
 

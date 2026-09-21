@@ -8,14 +8,13 @@ task-local (each request/asyncio task sees only its own value).
 """
 
 from contextvars import ContextVar, Token
-from typing import Optional
 
-_awx_override: ContextVar[Optional[dict]] = ContextVar(
+_awx_override: ContextVar[dict | None] = ContextVar(
     "awx_request_override", default=None
 )
 
 
-def set_awx_override(config: Optional[dict]) -> Token:
+def set_awx_override(config: dict | None) -> Token:
     """Set the per-request AWX override; returns a token for reset()."""
     return _awx_override.set(config or None)
 

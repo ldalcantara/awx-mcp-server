@@ -1,16 +1,16 @@
 """Tests for configuration manager."""
 
-import pytest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from awx_mcp_server.storage import ConfigManager
+import pytest
 from awx_mcp_server.domain import (
+    EnvironmentAlreadyExistsError,
     EnvironmentConfig,
     EnvironmentNotFoundError,
-    EnvironmentAlreadyExistsError,
     NoActiveEnvironmentError,
 )
+from awx_mcp_server.storage import ConfigManager
 
 
 @pytest.fixture

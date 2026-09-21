@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, ClassVar
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
@@ -54,9 +54,9 @@ class EnvironmentConfig(BaseModel):
     is_default: bool = False
 
     # Optional defaults
-    default_organization: Optional[str] = None
-    default_project: Optional[str] = None
-    default_inventory: Optional[str] = None
+    default_organization: str | None = None
+    default_project: str | None = None
+    default_inventory: str | None = None
 
     # Allowlists
     allowed_job_templates: list[str] = Field(default_factory=list)
@@ -77,7 +77,7 @@ class EnvironmentConfig(BaseModel):
     class Config:
         """Pydantic config."""
 
-        json_encoders = {
+        json_encoders: ClassVar[dict] = {
             datetime: lambda v: v.isoformat(),
             UUID: lambda v: str(v),
         }
@@ -95,9 +95,9 @@ class JobTemplate(BaseModel):
 
     id: int
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     job_type: str
-    inventory: Optional[int] = None
+    inventory: int | None = None
     project: int
     playbook: str
     extra_vars: dict[str, Any] = Field(default_factory=dict)
@@ -108,11 +108,11 @@ class Project(BaseModel):
 
     id: int
     name: str
-    description: Optional[str] = None
-    scm_type: Optional[str] = None
-    scm_url: Optional[str] = None
-    scm_branch: Optional[str] = None
-    status: Optional[str] = None
+    description: str | None = None
+    scm_type: str | None = None
+    scm_url: str | None = None
+    scm_branch: str | None = None
+    status: str | None = None
 
 
 class Inventory(BaseModel):
@@ -120,8 +120,8 @@ class Inventory(BaseModel):
 
     id: int
     name: str
-    description: Optional[str] = None
-    organization: Optional[int] = None
+    description: str | None = None
+    organization: int | None = None
     total_hosts: int = 0
     hosts_with_active_failures: int = 0
 
@@ -132,14 +132,14 @@ class Job(BaseModel):
     id: int
     name: str
     status: JobStatus
-    job_template: Optional[int] = None
-    inventory: Optional[int] = None
-    project: Optional[int] = None
+    job_template: int | None = None
+    inventory: int | None = None
+    project: int | None = None
     playbook: str
     extra_vars: dict[str, Any] = Field(default_factory=dict)
-    started: Optional[datetime] = None
-    finished: Optional[datetime] = None
-    elapsed: Optional[float] = None
+    started: datetime | None = None
+    finished: datetime | None = None
+    elapsed: float | None = None
     artifacts: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -148,10 +148,10 @@ class WorkflowJobTemplate(BaseModel):
 
     id: int
     name: str
-    description: Optional[str] = None
-    organization: Optional[int] = None
-    inventory: Optional[int] = None
-    limit: Optional[str] = None
+    description: str | None = None
+    organization: int | None = None
+    inventory: int | None = None
+    limit: str | None = None
     extra_vars: dict[str, Any] = Field(default_factory=dict)
     survey_enabled: bool = False
     allow_simultaneous: bool = False
@@ -160,9 +160,9 @@ class WorkflowJobTemplate(BaseModel):
     ask_limit_on_launch: bool = False
     ask_tags_on_launch: bool = False
     ask_skip_tags_on_launch: bool = False
-    status: Optional[str] = None
-    last_job_run: Optional[datetime] = None
-    next_job_run: Optional[datetime] = None
+    status: str | None = None
+    last_job_run: datetime | None = None
+    next_job_run: datetime | None = None
 
 
 class WorkflowJob(BaseModel):
@@ -170,28 +170,28 @@ class WorkflowJob(BaseModel):
 
     id: int
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     status: JobStatus
-    workflow_job_template: Optional[int] = None
-    inventory: Optional[int] = None
-    limit: Optional[str] = None
+    workflow_job_template: int | None = None
+    inventory: int | None = None
+    limit: str | None = None
     extra_vars: dict[str, Any] = Field(default_factory=dict)
-    started: Optional[datetime] = None
-    finished: Optional[datetime] = None
-    elapsed: Optional[float] = None
+    started: datetime | None = None
+    finished: datetime | None = None
+    elapsed: float | None = None
     failed: bool = False
-    launch_type: Optional[str] = None
-    job_explanation: Optional[str] = None
+    launch_type: str | None = None
+    job_explanation: str | None = None
 
 
 class WorkflowJobNode(BaseModel):
     """AWX workflow job node (individual step in a workflow run)."""
 
     id: int
-    job: Optional[int] = None
+    job: int | None = None
     workflow_job: int
-    unified_job_template: Optional[int] = None
-    identifier: Optional[str] = None
+    unified_job_template: int | None = None
+    identifier: str | None = None
     do_not_run: bool = False
     success_nodes: list[int] = Field(default_factory=list)
     failure_nodes: list[int] = Field(default_factory=list)
@@ -208,12 +208,12 @@ class JobEvent(BaseModel):
     event_level: int
     failed: bool
     changed: bool
-    task: Optional[str] = None
-    play: Optional[str] = None
-    role: Optional[str] = None
-    host: Optional[str] = None
-    stdout: Optional[str] = None
-    stderr: Optional[str] = None
+    task: str | None = None
+    play: str | None = None
+    role: str | None = None
+    host: str | None = None
+    stdout: str | None = None
+    stderr: str | None = None
     event_data: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -222,13 +222,13 @@ class FailureAnalysis(BaseModel):
 
     job_id: int
     category: FailureCategory
-    task_name: Optional[str] = None
-    play_name: Optional[str] = None
-    role_name: Optional[str] = None
-    file_path: Optional[str] = None
-    host: Optional[str] = None
-    error_message: Optional[str] = None
-    stderr: Optional[str] = None
+    task_name: str | None = None
+    play_name: str | None = None
+    role_name: str | None = None
+    file_path: str | None = None
+    host: str | None = None
+    error_message: str | None = None
+    stderr: str | None = None
     suggested_fixes: list[str] = Field(default_factory=list)
     failed_events_count: int = 0
 
@@ -240,7 +240,7 @@ class AuditLog(BaseModel):
     environment: str
     user: str
     action: str
-    job_template: Optional[str] = None
-    job_id: Optional[int] = None
+    job_template: str | None = None
+    job_id: int | None = None
     success: bool
-    error: Optional[str] = None
+    error: str | None = None

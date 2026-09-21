@@ -1,8 +1,9 @@
 """Test AWX MCP functionality - environment management."""
 
 import asyncio
-from awx_mcp_server.storage import ConfigManager, CredentialStore
+
 from awx_mcp_server.domain import CredentialType, NoActiveEnvironmentError
+from awx_mcp_server.storage import ConfigManager, CredentialStore
 
 
 async def test_env_management():

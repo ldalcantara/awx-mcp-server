@@ -7,7 +7,6 @@ slip in unnoticed — a security-sensitive module must fail loudly, not pretend.
 """
 
 import pytest
-
 from awx_mcp_server.storage.vault_integration import (
     VAULT_PROVIDERS,
     AWSSecretsManagerProvider,

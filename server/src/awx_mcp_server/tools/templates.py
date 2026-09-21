@@ -79,7 +79,7 @@ TOOLS: list[Tool] = [
 
 
 async def _h_awx_templates_list(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         templates = await client.list_job_templates(
             name_filter=arguments.get("filter"),
@@ -100,7 +100,7 @@ async def _h_awx_templates_list(ctx: ToolContext, arguments: Any) -> list[TextCo
 
 # Templates CRUD
 async def _h_awx_template_create(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         template = await client.create_job_template(
             name=arguments["name"],
@@ -122,7 +122,7 @@ async def _h_awx_template_create(ctx: ToolContext, arguments: Any) -> list[TextC
 
 
 async def _h_awx_template_delete(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     template_id = arguments["template_id"]
 
     async with client:

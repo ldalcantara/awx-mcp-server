@@ -1,16 +1,16 @@
 """Tests for domain models."""
 
-import pytest
 from datetime import datetime
-from pydantic import ValidationError
 
+import pytest
 from awx_mcp_server.domain import (
     EnvironmentConfig,
-    JobStatus,
     FailureCategory,
     Job,
+    JobStatus,
     JobTemplate,
 )
+from pydantic import ValidationError
 
 
 def test_environment_config_valid():

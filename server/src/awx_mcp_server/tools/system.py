@@ -142,7 +142,7 @@ TOOLS: list[Tool] = [
 
 # System Info
 async def _h_awx_system_info(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     info_type = arguments["info_type"]
 
     async with client:
@@ -178,7 +178,7 @@ async def _h_awx_system_info(ctx: ToolContext, arguments: Any) -> list[TextConte
 async def _h_awx_organizations_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         orgs = await client.list_organizations(
             name_filter=arguments.get("filter"),
@@ -199,7 +199,7 @@ async def _h_awx_organizations_list(
 async def _h_awx_organization_get(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     org_id = arguments["org_id"]
 
     async with client:
@@ -218,7 +218,7 @@ async def _h_awx_organization_get(
 async def _h_awx_credentials_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         creds = await client.list_credentials(
             name_filter=arguments.get("filter"),
@@ -240,7 +240,7 @@ async def _h_awx_credentials_list(
 async def _h_awx_credential_types_list(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         types = await client.list_credential_types(
             page=arguments.get("page", 1),
@@ -260,7 +260,7 @@ async def _h_awx_credential_types_list(
 async def _h_awx_credential_create(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         cred = await client.create_credential(
             name=arguments["name"],
@@ -280,7 +280,7 @@ async def _h_awx_credential_create(
 async def _h_awx_credential_delete(
     ctx: ToolContext, arguments: Any
 ) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     cred_id = arguments["credential_id"]
 
     async with client:

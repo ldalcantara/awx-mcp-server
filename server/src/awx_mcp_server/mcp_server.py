@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import os
 from collections import OrderedDict
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
 
 from mcp.server import Server
@@ -40,7 +40,7 @@ configure_logging()
 logger = get_logger(__name__)
 
 
-def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
+def create_mcp_server(tenant_id: str | None = None) -> Server:
     """
     Create MCP server instance.
 
@@ -74,7 +74,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
 
     def cached_client(
         env: EnvironmentConfig,
-        username: Optional[str],
+        username: str | None,
         secret: str,
         is_token: bool,
     ) -> RestAWXClient:
@@ -148,7 +148,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
 
             override = get_awx_override()
 
-            def _cfg(key: str, default: Optional[str] = None) -> Optional[str]:
+            def _cfg(key: str, default: str | None = None) -> str | None:
                 return override.get(key) or os.getenv(key, default)
 
             awx_base_url = _cfg("AWX_BASE_URL")
@@ -222,7 +222,7 @@ def create_mcp_server(tenant_id: Optional[str] = None) -> Server:
 
     def make_client(
         env: EnvironmentConfig,
-        username: Optional[str],
+        username: str | None,
         secret: str,
         is_token: bool = False,
     ) -> RestAWXClient:

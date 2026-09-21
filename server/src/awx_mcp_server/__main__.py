@@ -5,6 +5,7 @@ This allows the server to be run with: python -m awx_mcp_server
 
 import asyncio
 import sys
+
 from awx_mcp_server import __version__
 from awx_mcp_server.mcp_server import main
 

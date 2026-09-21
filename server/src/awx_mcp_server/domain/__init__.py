@@ -1,12 +1,12 @@
 """Domain models package."""
 
 from awx_mcp_server.domain.exceptions import (
+    AllowlistViolationError,
     AWXAuthenticationError,
     AWXClientError,
     AWXConnectionError,
     AWXMCPError,
     AWXPermissionError,
-    AllowlistViolationError,
     ConfigurationError,
     CredentialError,
     EnvironmentAlreadyExistsError,

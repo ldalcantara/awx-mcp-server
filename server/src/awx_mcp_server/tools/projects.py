@@ -91,7 +91,7 @@ TOOLS: list[Tool] = [
 
 
 async def _h_awx_projects_list(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         projects = await client.list_projects(
             name_filter=arguments.get("filter"),
@@ -116,7 +116,7 @@ async def _h_awx_projects_list(ctx: ToolContext, arguments: Any) -> list[TextCon
 
 # Projects CRUD
 async def _h_awx_project_create(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     async with client:
         project = await client.create_project(
             name=arguments["name"],
@@ -137,7 +137,7 @@ async def _h_awx_project_create(ctx: ToolContext, arguments: Any) -> list[TextCo
 
 
 async def _h_awx_project_delete(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     project_id = arguments["project_id"]
 
     async with client:
@@ -147,7 +147,7 @@ async def _h_awx_project_delete(ctx: ToolContext, arguments: Any) -> list[TextCo
 
 
 async def _h_awx_project_update(ctx: ToolContext, arguments: Any) -> list[TextContent]:
-    env, client = ctx.get_active_client()
+    _env, client = ctx.get_active_client()
     project_id = arguments["project_id"]
     wait = arguments.get("wait", True)
 

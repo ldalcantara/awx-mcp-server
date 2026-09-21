@@ -8,9 +8,9 @@ from awx_mcp_server.utils.parsing import (
 )
 
 __all__ = [
+    "analyze_job_failure",
     "configure_logging",
     "get_logger",
-    "analyze_job_failure",
     "redact_sensitive",
     "sanitize_secret",
 ]

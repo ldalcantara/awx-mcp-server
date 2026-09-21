@@ -7,7 +7,7 @@ pushing to AWX via SCM.
 
 import json
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -24,7 +24,7 @@ def _load_registry() -> dict[str, Any]:
     if REGISTRY_FILE.exists():
         try:
             return json.loads(REGISTRY_FILE.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             return {"projects": {}, "default": None}
     return {"projects": {}, "default": None}
 
@@ -40,11 +40,11 @@ def _save_registry(registry: dict[str, Any]) -> None:
 def register_project(
     name: str,
     path: str,
-    scm_url: Optional[str] = None,
-    scm_branch: Optional[str] = None,
-    inventory: Optional[str] = None,
-    default_playbook: Optional[str] = None,
-    description: Optional[str] = None,
+    scm_url: str | None = None,
+    scm_branch: str | None = None,
+    inventory: str | None = None,
+    default_playbook: str | None = None,
+    description: str | None = None,
     set_default: bool = False,
 ) -> dict[str, Any]:
     """
@@ -82,7 +82,7 @@ def register_project(
                     if "url = " in line:
                         scm_url = line.split("url = ", 1)[1].strip()
                         break
-            except IOError:
+            except OSError:
                 pass
 
     # Auto-detect inventory
@@ -194,7 +194,7 @@ def list_projects() -> dict[str, Any]:
     }
 
 
-def get_project(name: Optional[str] = None) -> dict[str, Any]:
+def get_project(name: str | None = None) -> dict[str, Any]:
     """
     Get a registered project by name (or default).
 
@@ -220,8 +220,8 @@ def get_project(name: Optional[str] = None) -> dict[str, Any]:
 
 
 def discover_playbooks(
-    project_name: Optional[str] = None,
-    project_path: Optional[str] = None,
+    project_name: str | None = None,
+    project_path: str | None = None,
 ) -> dict[str, Any]:
     """
     Discover playbooks under a project root.
@@ -281,21 +281,26 @@ def discover_playbooks(
         # Check if it looks like a playbook (list of plays with hosts key)
         try:
             content = yaml.safe_load(yml_file.read_text(encoding="utf-8"))
-            if isinstance(content, list) and content and isinstance(content[0], dict):
-                if "hosts" in content[0] or "import_playbook" in content[0]:
-                    rel_path = yml_file.relative_to(root)
-                    plays = len(content)
-                    hosts = content[0].get("hosts", "N/A")
-                    playbooks.append(
-                        {
-                            "name": yml_file.name,
-                            "relative_path": str(rel_path),
-                            "full_path": str(yml_file),
-                            "plays": plays,
-                            "hosts": str(hosts),
-                        }
-                    )
-        except Exception:
+            if (
+                isinstance(content, list)
+                and content
+                and isinstance(content[0], dict)
+                and ("hosts" in content[0] or "import_playbook" in content[0])
+            ):
+                rel_path = yml_file.relative_to(root)
+                plays = len(content)
+                hosts = content[0].get("hosts", "N/A")
+                playbooks.append(
+                    {
+                        "name": yml_file.name,
+                        "relative_path": str(rel_path),
+                        "full_path": str(yml_file),
+                        "plays": plays,
+                        "hosts": str(hosts),
+                    }
+                )
+        except Exception as exc:
+            logger.debug("skipping unreadable playbook %s: %s", yml_file, exc)
             continue
 
     # Also discover roles
@@ -319,11 +324,11 @@ def discover_playbooks(
 
 async def project_run_playbook(
     playbook: str,
-    project_name: Optional[str] = None,
-    extra_vars: Optional[dict[str, Any]] = None,
-    limit: Optional[str] = None,
-    tags: Optional[list[str]] = None,
-    skip_tags: Optional[list[str]] = None,
+    project_name: str | None = None,
+    extra_vars: dict[str, Any] | None = None,
+    limit: str | None = None,
+    tags: list[str] | None = None,
+    skip_tags: list[str] | None = None,
     check_mode: bool = False,
     verbose: int = 0,
 ) -> dict[str, Any]:
@@ -384,9 +389,9 @@ async def project_run_playbook(
 
 
 async def git_push_project(
-    project_name: Optional[str] = None,
-    commit_message: Optional[str] = None,
-    branch: Optional[str] = None,
+    project_name: str | None = None,
+    commit_message: str | None = None,
+    branch: str | None = None,
     add_all: bool = True,
 ) -> dict[str, Any]:
     """

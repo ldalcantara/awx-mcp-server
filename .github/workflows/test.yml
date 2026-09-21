@@ -220,8 +220,14 @@ jobs:
           python-version: "3.11"
       
       - name: Install linting tools
+        # PINNED on purpose. These were unpinned, so every run installed
+        # whatever was newest: ruff 0.16 added rules and turned a green commit
+        # red — 469 errors on code that had not changed since the last passing
+        # run. A linter that can fail without a commit is not a gate, it is a
+        # coin toss. Bump these deliberately, in a pull request that also fixes
+        # whatever the new version finds.
         run: |
-          pip install ruff black mypy
+          pip install ruff==0.15.21 black==26.5.1 mypy==2.3.0
           pip install -e "./server[dev]"
 
       - name: Run ruff

@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Optional tool fields were sent as `null`.** `tools/list` and
+  `resources/list` serialized SDK models with a bare `model_dump()`, so every
+  optional field (`title`, `icons`, `outputSchema`, `annotations`,
+  `execution`, `_meta`) went on the wire as `null`. Strict clients — Claude
+  Code among them — reject that and fail the whole tool listing
+  (`tools.0.title: Invalid input, …`). Responses now use
+  `model_dump(by_alias=True, mode="json", exclude_none=True)`, and
+  `tools/call` returns the full `CallToolResult`, so `isError` and
+  `structuredContent` reach the client instead of being dropped.
+- **`initialize` advertised a `resources` capability the server does not
+  have.** No resources handler is registered, so a client that trusted the
+  capability list called `resources/list` and got `-32603 Internal error`
+  (a `KeyError` on the handler table). The capability is no longer
+  advertised, and `resources/list` answers with an empty list when nothing is
+  registered.
 - **Pin the MCP Python SDK to `<2`.** SDK 2.0 removed the 1.x low-level
   `Server.list_tools()` / `call_tool()` decorators that `mcp_server.py` uses;
   a fresh `pip install` resolved to 2.x and the server started, then crashed

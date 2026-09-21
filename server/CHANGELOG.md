@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Schedule listings now show the **inventory override** next to the limit.
+  A schedule may override the template's inventory when the template prompts
+  for one, so two schedules sharing a limit name can target entirely
+  different machines — showing the limit alone invites the opposite
+  conclusion.
 - **Schedule tools** — `awx_schedules_list`, `awx_schedule_get`,
   `awx_schedule_create`, `awx_schedule_update`, `awx_schedule_delete`, over
   `/api/v2/schedules/`. The only schedule tool until now was

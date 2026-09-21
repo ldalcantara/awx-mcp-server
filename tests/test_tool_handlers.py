@@ -568,6 +568,33 @@ async def test_schedules_list(invoke):
     )
 
 
+async def test_schedules_list_renders_inventory_override(invoke):
+    """Two schedules can share a limit and still hit different machines."""
+    sched = _sched(
+        inventory=5,
+        limit="tags_linux_dns_patch_d1",
+        summary_fields={
+            "unified_job_template": {
+                "name": "[PROD] infra-linux-vm-patching",
+                "unified_job_type": "job",
+            },
+            "inventory": {"name": "Physical Nodes (NetBox)"},
+        },
+    )
+    client = FakeClient(rest={"list_schedules": AsyncMock(return_value=[sched])})
+    text = await invoke("awx_schedules_list", {}, client)
+    assert_ok(text)
+    assert "Inventory: Physical Nodes (NetBox) (overrides the template's)" in text
+    assert "Limit: tags_linux_dns_patch_d1" in text
+
+
+async def test_schedules_list_without_inventory_override(invoke):
+    client = FakeClient(rest={"list_schedules": AsyncMock(return_value=[_sched()])})
+    text = await invoke("awx_schedules_list", {}, client)
+    assert_ok(text)
+    assert "Inventory:" not in text
+
+
 async def test_schedules_list_filtered_by_template(invoke):
     client = FakeClient(rest={"list_schedules": AsyncMock(return_value=[])})
     text = await invoke(

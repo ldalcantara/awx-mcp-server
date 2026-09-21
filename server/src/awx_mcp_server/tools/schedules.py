@@ -165,6 +165,15 @@ def _describe(sched: dict[str, Any], indent: str = "  ") -> str:
         out += f"{indent}Description: {sched['description']}\n"
     if sched.get("extra_data"):
         out += f"{indent}Extra variables: {sched['extra_data']}\n"
+    # Inventory and limit together decide which hosts this run touches, so they
+    # belong side by side. A schedule may override the template's inventory
+    # (when the template prompts for one), and then two schedules sharing a
+    # limit name still target completely different machines — reading the limit
+    # alone invites the opposite conclusion.
+    if sched.get("inventory"):
+        inv = sched.get("summary_fields", {}).get("inventory", {})
+        label = inv.get("name") or f"ID {sched['inventory']}"
+        out += f"{indent}Inventory: {label} (overrides the template's)\n"
     if sched.get("limit"):
         out += f"{indent}Limit: {sched['limit']}\n"
     return out

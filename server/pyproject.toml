@@ -26,7 +26,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "mcp>=1.0.0",
+    # <2: the MCP Python SDK 2.0 removed the 1.x low-level Server decorators
+    # (Server.list_tools & co.) that mcp_server.py is written against; an
+    # unpinned install boots and then dies with AttributeError. Lift the cap
+    # together with a port to the 2.x API.
+    "mcp>=1.0.0,<2",
     "fastapi>=0.109.0",
     "uvicorn[standard]>=0.27.0",
     "python-multipart>=0.0.6",

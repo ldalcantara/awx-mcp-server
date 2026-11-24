@@ -285,6 +285,11 @@ launch template 1 with tags "deploy,config"
 run template 2 and skip tags "test"
 ```
 
+A limit, tags, skip tags or extra vars only reach the job when the template
+prompts for them on launch (*Prompt on launch*, or a survey for variables).
+Otherwise AWX would drop them and run with the template's own values, so the
+tool refuses the launch and names the fields instead.
+
 ### Cancel Job (`awx_job_cancel`)
 ```
 cancel job 1

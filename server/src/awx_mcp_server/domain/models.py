@@ -141,6 +141,9 @@ class Job(BaseModel):
     finished: datetime | None = None
     elapsed: float | None = None
     artifacts: dict[str, Any] = Field(default_factory=dict)
+    # Launch fields AWX dropped because the template does not prompt for them;
+    # only the launch response carries it.
+    ignored_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowJobTemplate(BaseModel):
@@ -182,6 +185,8 @@ class WorkflowJob(BaseModel):
     failed: bool = False
     launch_type: str | None = None
     job_explanation: str | None = None
+    # Launch fields AWX dropped; only the launch response carries it.
+    ignored_fields: dict[str, Any] = Field(default_factory=dict)
 
 
 class WorkflowJobNode(BaseModel):

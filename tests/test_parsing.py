@@ -1,7 +1,12 @@
 """Tests for failure analysis."""
 
 from awx_mcp_server.domain import FailureCategory, JobEvent
-from awx_mcp_server.utils import analyze_job_failure
+from awx_mcp_server.utils import (
+    analyze_job_failure,
+    describe_ignored_fields,
+    ignored_fields_note,
+    unprompted_launch_fields,
+)
 
 
 def test_analyze_auth_failure():
@@ -161,3 +166,32 @@ def test_redact_sensitive_walks_containers_and_passes_scalars():
     ]
     assert redact_sensitive("plain") == "plain"
     assert redact_sensitive(None) is None
+
+
+# --- Launch prompts ---------------------------------------------------------
+
+
+def test_unprompted_fields_are_named():
+    prompts = {"ask_limit_on_launch": False, "ask_tags_on_launch": True}
+    args = {"limit": "web01", "tags": ["config"], "skip_tags": ["slow"]}
+    assert unprompted_launch_fields(args, prompts) == ["limit", "skip_tags"]
+
+
+def test_fields_not_passed_are_not_checked():
+    assert unprompted_launch_fields({"template_id": 1}, {}) == []
+    assert unprompted_launch_fields({"limit": "", "tags": []}, {}) == []
+
+
+def test_variables_are_accepted_through_a_survey():
+    args = {"extra_vars": {"mode": "test"}}
+    assert unprompted_launch_fields(args, {"survey_enabled": True}) == []
+    assert unprompted_launch_fields(args, {"ask_variables_on_launch": True}) == []
+    assert unprompted_launch_fields(args, {}) == ["extra_vars"]
+
+
+def test_ignored_fields_rendering():
+    ignored = {"limit": "web01", "extra_vars": {"foo": 1, "bar": 2}}
+    assert describe_ignored_fields(ignored) == "limit, extra_vars (bar, foo)"
+    assert "AWX ignored: limit, extra_vars (bar, foo)" in ignored_fields_note(ignored)
+    assert ignored_fields_note({}) == ""
+    assert ignored_fields_note(None) == ""

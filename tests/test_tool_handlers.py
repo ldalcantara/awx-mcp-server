@@ -141,7 +141,7 @@ async def test_workflow_template_get(invoke):
 
 
 async def test_workflow_job_launch(invoke):
-    tmpl = SimpleNamespace(name="Deploy Pipeline")
+    tmpl = SimpleNamespace(name="Deploy Pipeline", ask_variables_on_launch=True)
     wf_job = SimpleNamespace(
         id=340, name="Deploy Pipeline", status=JobStatus.SUCCESSFUL
     )
@@ -162,6 +162,28 @@ async def test_workflow_job_launch(invoke):
     kwargs = client.launch_workflow_job.await_args.kwargs
     assert kwargs["template_id"] == 12
     assert kwargs["extra_vars"] == {"env": "prod"}
+
+
+async def test_workflow_job_launch_refuses_unprompted_fields(invoke):
+    tmpl = SimpleNamespace(
+        name="Deploy Pipeline",
+        ask_limit_on_launch=False,
+        ask_variables_on_launch=True,
+        ask_tags_on_launch=False,
+        ask_skip_tags_on_launch=False,
+        survey_enabled=False,
+    )
+    client = FakeClient(
+        methods={
+            "get_workflow_job_template": AsyncMock(return_value=tmpl),
+            "launch_workflow_job": AsyncMock(),
+        }
+    )
+    args = {"template_id": 12, "limit": "web01", "extra_vars": {"env": "prod"}}
+    text = await invoke("awx_workflow_job_launch", args, client)
+    assert text.startswith("Not launched: template 'Deploy Pipeline'")
+    assert "for limit." in text
+    client.launch_workflow_job.assert_not_awaited()
 
 
 # --- Notification tools (client.rest_client.<method>, dicts) --------------
@@ -477,6 +499,84 @@ async def test_job_launch(invoke):
     )
     assert_ok(await invoke("awx_job_launch", {"template_id": 1}, client))
     client.launch_job.assert_awaited_once()
+
+
+def _launch_client(prompts, job=None):
+    """A client for awx_job_launch whose template has the given launch prompts."""
+    return FakeClient(
+        methods={
+            "get_job_template": AsyncMock(return_value=SimpleNamespace(name="deploy")),
+            "get_job_template_launch_info": AsyncMock(return_value=prompts),
+            "launch_job": AsyncMock(
+                return_value=job
+                or SimpleNamespace(
+                    id=42, name="deploy", status=JobStatus.PENDING, playbook="site.yml"
+                )
+            ),
+        }
+    )
+
+
+async def test_job_launch_refuses_a_limit_the_template_does_not_prompt_for(invoke):
+    client = _launch_client({"ask_limit_on_launch": False})
+    text = await invoke("awx_job_launch", {"template_id": 1, "limit": "web01"}, client)
+    assert text.startswith("Not launched: template 'deploy'")
+    assert "limit" in text
+    client.launch_job.assert_not_awaited()
+
+
+async def test_job_launch_names_every_unprompted_field(invoke):
+    client = _launch_client({"ask_limit_on_launch": True})
+    args = {"template_id": 1, "limit": "web01", "tags": ["a"], "extra_vars": {"x": 1}}
+    text = await invoke("awx_job_launch", args, client)
+    assert "for tags, extra_vars." in text
+    client.launch_job.assert_not_awaited()
+
+
+async def test_job_launch_passes_prompted_fields(invoke):
+    client = _launch_client({"ask_limit_on_launch": True, "survey_enabled": True})
+    args = {"template_id": 1, "limit": "web01", "extra_vars": {"mode": "test"}}
+    text = await invoke("awx_job_launch", args, client)
+    assert_ok(text)
+    assert "Job ID: 42" in text
+    kwargs = client.launch_job.await_args.kwargs
+    assert kwargs["limit"] == "web01"
+    assert kwargs["extra_vars"] == {"mode": "test"}
+
+
+async def test_job_launch_without_launch_fields_skips_the_prompt_lookup(invoke):
+    client = _launch_client({})
+    assert_ok(await invoke("awx_job_launch", {"template_id": 1}, client))
+    client.get_job_template_launch_info.assert_not_awaited()
+    client.launch_job.assert_awaited_once()
+
+
+async def test_job_launch_reports_what_awx_ignored(invoke):
+    job = SimpleNamespace(
+        id=42,
+        name="deploy",
+        status=JobStatus.PENDING,
+        playbook="site.yml",
+        ignored_fields={"extra_vars": {"not_in_survey": 1}},
+    )
+    client = _launch_client({"survey_enabled": True}, job=job)
+    args = {"template_id": 1, "extra_vars": {"not_in_survey": 1}}
+    text = await invoke("awx_job_launch", args, client)
+    assert "Job ID: 42" in text
+    assert "AWX ignored: extra_vars (not_in_survey)" in text
+
+
+async def test_system_info_me(invoke):
+    client = FakeClient(
+        methods={
+            "get_me": AsyncMock(
+                return_value={"id": 7, "username": "serenity", "is_superuser": False}
+            )
+        }
+    )
+    text = await invoke("awx_system_info", {"info_type": "me"}, client)
+    assert "ID: 7" in text
+    assert "Username: serenity" in text
 
 
 # --- Drift guard ----------------------------------------------------------

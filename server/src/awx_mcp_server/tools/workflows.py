@@ -6,7 +6,13 @@ from typing import Any
 from mcp.types import TextContent, Tool
 
 from awx_mcp_server.tools.context import ToolContext
-from awx_mcp_server.utils import get_logger
+from awx_mcp_server.utils import (
+    LAUNCH_PROMPT_FLAGS,
+    get_logger,
+    ignored_fields_note,
+    launch_refusal,
+    unprompted_launch_fields,
+)
 
 logger = get_logger(__name__)
 
@@ -49,7 +55,8 @@ TOOLS: list[Tool] = [
     ),
     Tool(
         name="awx_workflow_job_launch",
-        description="Launch/execute/run a workflow job from a workflow job template. Creates a new workflow job that orchestrates multiple steps.",
+        description="Launch/execute/run a workflow job from a workflow job template. Creates a new workflow job that orchestrates multiple steps."
+        " Refuses, without launching, a limit, tags, skip_tags or extra_vars that the workflow template does not prompt for on launch: AWX would silently drop them and run with the workflow template's own values.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -325,6 +332,12 @@ async def _h_awx_workflow_job_launch(
     async with client:
         tmpl = await client.get_workflow_job_template(template_id)
         ctx.check_allowlist(env, template_id, tmpl.name)
+        prompts = {f: getattr(tmpl, f, False) for f in LAUNCH_PROMPT_FLAGS}
+        unprompted = unprompted_launch_fields(arguments, prompts)
+        if unprompted:
+            return [
+                TextContent(type="text", text=launch_refusal(tmpl.name, unprompted))
+            ]
 
         wf_job = await client.launch_workflow_job(
             template_id=template_id,
@@ -345,6 +358,7 @@ async def _h_awx_workflow_job_launch(
     result += f"Workflow Job ID: {wf_job.id}\n"
     result += f"Name: {wf_job.name}\n"
     result += f"Status: {wf_job.status.value}\n"
+    result += ignored_fields_note(getattr(wf_job, "ignored_fields", None))
 
     return [TextContent(type="text", text=result)]
 

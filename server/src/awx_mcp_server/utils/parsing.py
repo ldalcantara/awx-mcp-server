@@ -273,3 +273,71 @@ def sanitize_secret(text: str, secrets: list[str]) -> str:
         if secret and len(secret) > 0:
             result = result.replace(secret, "[REDACTED]")
     return result
+
+
+# Launch fields a caller may pass, and the template flags that make AWX accept
+# them. A variable is also accepted through a survey, for the keys the survey
+# declares; that partial case is left to AWX's own ``ignored_fields``.
+_LAUNCH_PROMPTS: dict[str, tuple[str, ...]] = {
+    "limit": ("ask_limit_on_launch",),
+    "tags": ("ask_tags_on_launch",),
+    "skip_tags": ("ask_skip_tags_on_launch",),
+    "extra_vars": ("ask_variables_on_launch", "survey_enabled"),
+}
+
+
+LAUNCH_FIELDS = tuple(_LAUNCH_PROMPTS)
+LAUNCH_PROMPT_FLAGS = tuple(
+    sorted({f for flags in _LAUNCH_PROMPTS.values() for f in flags})
+)
+
+
+def unprompted_launch_fields(
+    arguments: dict[str, Any], prompts: dict[str, Any]
+) -> list[str]:
+    """Name the launch fields that were passed but that the template will ignore.
+
+    AWX does not reject a launch field the template does not prompt for: it
+    drops it, starts the job with the template's own value and only mentions
+    the field in ``ignored_fields``. For ``limit`` that means running on the
+    template's whole scope. ``prompts`` is the template's launch configuration
+    (``ask_*_on_launch`` and ``survey_enabled``).
+    """
+    return [
+        field
+        for field, flags in _LAUNCH_PROMPTS.items()
+        if arguments.get(field) and not any(prompts.get(f) for f in flags)
+    ]
+
+
+def describe_ignored_fields(ignored: dict[str, Any]) -> str:
+    """Render AWX's ``ignored_fields``, e.g. ``limit, extra_vars (foo, bar)``."""
+    parts = []
+    for field, value in ignored.items():
+        if isinstance(value, dict) and value:
+            parts.append(f"{field} ({', '.join(sorted(map(str, value)))})")
+        else:
+            parts.append(str(field))
+    return ", ".join(parts)
+
+
+def launch_refusal(template_name: str, fields: list[str]) -> str:
+    """Text returned instead of launching when fields would be dropped."""
+    return (
+        f"Not launched: template '{template_name}' does not prompt on launch for "
+        f"{', '.join(fields)}. AWX would drop these fields and run with the "
+        "template's own values (a dropped limit means the template's own limit, or "
+        "its whole inventory if it has none). Remove them, or turn on 'Prompt on "
+        "launch' for them in the template."
+    )
+
+
+def ignored_fields_note(ignored: Any) -> str:
+    """A warning line for a launch response whose ``ignored_fields`` is not empty."""
+    if not isinstance(ignored, dict) or not ignored:
+        return ""
+    return (
+        f"\n⚠ AWX ignored: {describe_ignored_fields(ignored)}. The template does not "
+        "prompt for these on launch, so the job runs with the template's own values "
+        "for them.\n"
+    )

@@ -23,6 +23,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   schedule runs, its recurrence rule, whether it is enabled and the next run.
 
 ### Fixed
+- **`awx_job_launch` and `awx_workflow_job_launch` no longer let AWX drop a
+  launch field silently.** AWX does not reject a `limit`, `tags`, `skip_tags`
+  or `extra_vars` that the template does not prompt for on launch: it drops
+  the field, starts the job with the template's own values and only lists the
+  field in the launch response's `ignored_fields`, which the tools never
+  showed. A dropped `limit` runs the job on the template's own limit, or its
+  whole inventory. The tools now read the template's prompts first and refuse,
+  without launching, any field it would ignore, naming the fields; variables
+  are accepted when the template prompts for them or has a survey. Whatever
+  AWX still ignores (variables outside the survey) is shown after the launch.
+  Job templates cost one extra `GET .../launch/`, only when a launch field is
+  passed.
+- **`awx_system_info` with `info_type: me` printed `None` for every field.**
+  `/api/v2/me/` is a list endpoint holding the one user; `get_me()` now
+  returns `results[0]`.
 - **Adopt ruff 0.16 across the whole repository.** The linter now runs the
   0.16 rule set: 325 findings auto-fixed (import order, `Optional[X]` ->
   `X | None`, `Dict` -> `dict`, redundant `pass`, f-string conversions), 12

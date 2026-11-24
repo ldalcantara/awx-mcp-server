@@ -99,7 +99,7 @@ With the server configured, you can use natural language like:
 - `awx_template_delete` - Delete a job template
 
 ### Jobs (Execution, Monitoring & Diagnostics)
-- `awx_job_launch` - Launch a job from a template
+- `awx_job_launch` - Launch a job from a template (refuses a limit, tags, skip tags or variables the template does not prompt for on launch)
 - `awx_job_get` - Get job status/details
 - `awx_jobs_list` - List recent jobs / job history
 - `awx_job_cancel` - Cancel a running job

@@ -160,3 +160,38 @@ async def test_get_is_retried():
     result = await client.test_connection()
     assert result is False
     assert attempts["n"] == 3, "GET should be retried up to 3 attempts"
+
+
+async def test_get_me_returns_the_one_user():
+    """/api/v2/me/ is a one-item list; the user is results[0], not the top level."""
+    client = _client()
+    body = {"count": 1, "next": None, "results": [{"id": 7, "username": "serenity"}]}
+
+    async def serve(method, endpoint, **kwargs):
+        assert endpoint == "/api/v2/me/"
+        return _response(200, json.dumps(body).encode())
+
+    client.client.request = serve
+    me = await client.get_me()
+    assert me["id"] == 7
+    assert me["username"] == "serenity"
+
+
+async def test_launch_keeps_awx_ignored_fields():
+    """The launch response's ignored_fields must reach the caller."""
+    client = _client()
+    body = {
+        "id": 42,
+        "name": "deploy",
+        "status": "pending",
+        "playbook": "site.yml",
+        "ignored_fields": {"limit": "web01"},
+    }
+
+    async def serve(method, endpoint, **kwargs):
+        return _response(201, json.dumps(body).encode())
+
+    client.client.request = serve
+    job = await client.launch_job(1, limit="web01")
+    assert job.id == 42
+    assert job.ignored_fields == {"limit": "web01"}

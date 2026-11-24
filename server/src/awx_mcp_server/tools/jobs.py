@@ -6,7 +6,14 @@ from typing import Any
 from mcp.types import TextContent, Tool
 
 from awx_mcp_server.tools.context import ToolContext
-from awx_mcp_server.utils import analyze_job_failure, get_logger
+from awx_mcp_server.utils import (
+    LAUNCH_FIELDS,
+    analyze_job_failure,
+    get_logger,
+    ignored_fields_note,
+    launch_refusal,
+    unprompted_launch_fields,
+)
 
 logger = get_logger(__name__)
 
@@ -14,7 +21,8 @@ TOOLS: list[Tool] = [
     # Execution
     Tool(
         name="awx_job_launch",
-        description="Launch/execute/run/start a new AWX job from a template. Creates a new job execution instance.",
+        description="Launch/execute/run/start a new AWX job from a template. Creates a new job execution instance."
+        " Refuses, without launching, a limit, tags, skip_tags or extra_vars that the template does not prompt for on launch: AWX would silently drop them and run with the template's own values.",
         inputSchema={
             "type": "object",
             "properties": {
@@ -180,6 +188,15 @@ async def _h_awx_job_launch(ctx: ToolContext, arguments: Any) -> list[TextConten
     async with client:
         template = await client.get_job_template(template_id)
         ctx.check_allowlist(env, template_id, template.name)
+        if any(arguments.get(f) for f in LAUNCH_FIELDS):
+            prompts = await client.get_job_template_launch_info(template_id)
+            unprompted = unprompted_launch_fields(arguments, prompts)
+            if unprompted:
+                return [
+                    TextContent(
+                        type="text", text=launch_refusal(template.name, unprompted)
+                    )
+                ]
 
         job = await client.launch_job(
             template_id=template_id,
@@ -202,6 +219,7 @@ async def _h_awx_job_launch(ctx: ToolContext, arguments: Any) -> list[TextConten
     result += f"Name: {job.name}\n"
     result += f"Status: {job.status.value}\n"
     result += f"Playbook: {job.playbook}\n"
+    result += ignored_fields_note(getattr(job, "ignored_fields", None))
 
     return [TextContent(type="text", text=result)]
 

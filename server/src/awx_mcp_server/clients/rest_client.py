@@ -245,8 +245,17 @@ class RestAWXClient(AWXClient):
     # Authentication & General Info
 
     async def get_me(self) -> dict[str, Any]:
-        """Get current user information."""
-        return await self._request("GET", "/api/v2/me/")
+        """Get the user the credentials belong to.
+
+        ``/api/v2/me/`` is a list endpoint that holds exactly one user
+        (``{"count": 1, "results": [...]}``), so the user is ``results[0]``;
+        reading the fields from the top level yields ``None`` for all of them.
+        """
+        data = await self._request("GET", "/api/v2/me/")
+        results = data.get("results")
+        if isinstance(results, list):
+            return results[0] if results else {}
+        return data
 
     async def get_config(self) -> dict[str, Any]:
         """Get AWX system configuration."""
@@ -1047,6 +1056,7 @@ class RestAWXClient(AWXClient):
             finished=finished,
             elapsed=data.get("elapsed"),
             artifacts=data.get("artifacts", {}),
+            ignored_fields=data.get("ignored_fields") or {},
         )
 
     # ── Workflow Job Templates ──
@@ -1099,6 +1109,7 @@ class RestAWXClient(AWXClient):
             failed=data.get("failed", False),
             launch_type=data.get("launch_type"),
             job_explanation=data.get("job_explanation"),
+            ignored_fields=data.get("ignored_fields") or {},
         )
 
     def _parse_workflow_job_node(self, data: dict[str, Any]) -> WorkflowJobNode:
